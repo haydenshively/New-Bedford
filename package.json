@@ -1,0 +1,39 @@
+{
+  "name": "nantucket-v2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/start.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "big.js": "^5.2.2",
+    "dotenv": "^8.2.0",
+    "ethereumjs-tx": "^2.1.2",
+    "node-fetch": "^2.6.0",
+    "perf_hooks": "0.0.1",
+    "web3": "^1.2.6",
+    "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "@openzeppelin/cli": "^2.8.2",
+    "@openzeppelin/contracts": "^3.0.2",
+    "@truffle/hdwallet-provider": "^1.0.35",
+    "@uniswap/lib": "^1.1.2",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "chai": "^4.2.0",
+    "ganache-cli": "^6.9.1",
+    "mocha": "^7.2.0"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/haydenshively/Nantucket-V2.git"
+  },
+  "author": "Hayden Shively",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/haydenshively/Nantucket/issues"
+  },
+  "homepage": "https://github.com/haydenshively/Nantucket#readme"
+}

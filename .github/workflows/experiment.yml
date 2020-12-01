@@ -1,0 +1,75 @@
+# This is a basic workflow that is manually triggered
+
+name: Experiment
+
+on:
+  workflow_dispatch:
+    inputs:
+      description:
+        description: 'What are you hoping to test with this experiment?'
+
+env:
+  ACCOUNT_ADDRESS_TEST: ${{ secrets.ACCOUNT_ADDRESS_TEST }}
+  ACCOUNT_SECRET_TEST: ${{ secrets.ACCOUNT_SECRET_TEST }}
+  COINBASE_ENDPOINT: ${{ secrets.COINBASE_ENDPOINT }}
+  COMPOUND_ENDPOINT: ${{ secrets.COMPOUND_ENDPOINT }}
+  GAS_STATION_ENDPOINT: ${{ secrets.GAS_STATION_ENDPOINT }}
+  CB_ACCESS_KEY: ${{ secrets.CB_ACCESS_KEY }}
+  CB_ACCESS_PASSPHRASE: ${{ secrets.CB_ACCESS_PASSPHRASE }}
+  CB_ACCESS_SECRET: ${{ secrets.CB_ACCESS_SECRET }}
+  PROVIDER_IPC_PATH: ${{ secrets.PROVIDER_IPC_PATH }}
+  PROVIDER_INFURA_ID: ${{ secrets.PROVIDER_INFURA_ID }}
+  PROVIDER_INFURA_SECRET: ${{ secrets.PROVIDER_INFURA_SECRET }}
+  PROVIDER_ALCHEMY_KEY: ${{ secrets.PROVIDER_ALCHEMY_KEY }}
+  PGDATABASE: ${{ secrets.PGDATABASE }}
+  PGHOST: ${{ secrets.PGHOST }}
+  PGPASSWORD: ${{ secrets.PGPASSWORD }}
+  PGPORT: ${{ secrets.PGPORT }}
+  PGUSER: ${{ secrets.PGUSER }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+jobs:
+  Start:
+
+    runs-on: [ self-hosted, psql-db-access ]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js 14
+      uses: actions/setup-node@v1
+      with:
+        node-version: '14'
+    
+    - name: Create .env file
+      run: |
+        touch .env
+        echo "ACCOUNT_ADDRESS_TEST="$ACCOUNT_ADDRESS_TEST >> .env
+        echo "ACCOUNT_SECRET_TEST"=$ACCOUNT_SECRET_TEST >> .env
+        echo "COINBASE_ENDPOINT"=$COINBASE_ENDPOINT >> .env
+        echo "COMPOUND_ENDPOINT"=$COMPOUND_ENDPOINT >> .env
+        echo "GAS_STATION_ENDPOINT"=$GAS_STATION_ENDPOINT >> .env
+        echo "CB_ACCESS_KEY"=$CB_ACCESS_KEY >> .env
+        echo "CB_ACCESS_PASSPHRASE"=$CB_ACCESS_PASSPHRASE >> .env
+        echo "CB_ACCESS_SECRET"=$CB_ACCESS_SECRET >> .env
+        echo "PROVIDER_IPC_PATH"=$PROVIDER_IPC_PATH >> .env
+        echo "PROVIDER_INFURA_ID"=$PROVIDER_INFURA_ID >> .env
+        echo "PROVIDER_INFURA_SECRET"=$PROVIDER_INFURA_SECRET >> .env
+        echo "PROVIDER_ALCHEMY_KEY"=$PROVIDER_ALCHEMY_KEY >> .env
+        echo "PGDATABASE"=$PGDATABASE >> .env
+        echo "PGHOST"=$PGHOST >> .env
+        echo "PGPASSWORD"=$PGPASSWORD >> .env
+        echo "PGPORT"=$PGPORT >> .env
+        echo "PGUSER"=$PGUSER >> .env
+        echo "SLACK_WEBHOOK"=$SLACK_WEBHOOK >> .env
+        cat .env
+      shell: bash
+    
+    - name: Install dependencies
+      run: |
+        yarn install --ignore-optional
+        # The tfjs folks haven't published arm binaries yet
+        # yarn add @tensorflow/tfjs-node
+        # npm rebuild @tensorflow/tfjs-node --build-from-source
+      shell: bash
+
+    - run: yarn nantucket-test
