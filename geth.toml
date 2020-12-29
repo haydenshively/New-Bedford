@@ -16,7 +16,7 @@ EnablePreimageRecording = false
 EWASMInterpreter = ""
 EVMInterpreter = ""
 RPCGasCap = 25000000
-RPCTxFeeCap = 1e+01
+RPCTxFeeCap = 20
 
 [Eth.Miner]
 GasFloor = 8000000
@@ -37,7 +37,6 @@ DatasetsLockMmap = false
 PowMode = 0
 
 [Eth.TxPool]
-Locals = ["0xd3fe28f892ec951d9332d0c13e9ab0dcebd7cbf7", "0xd4e865a91ff282a767893896abf688018e6b4929", "0x7e3a0c2300175ff712742c21f36216e9fb63b487"]
 NoLocals = false
 Journal = "transactions.rlp"
 Rejournal = 3600000000000

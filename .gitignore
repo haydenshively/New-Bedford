@@ -1,5 +1,7 @@
-*.code-workspace
 .DS_STORE
+.idea
+.vscode
+*.code-workspace
 
 # Logs
 logs
@@ -74,7 +76,7 @@ typings/
 # dotenv environment variables file
 .env
 .env.*
-!.env.template
+!.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

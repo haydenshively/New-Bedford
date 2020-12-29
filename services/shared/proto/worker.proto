@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package new_bedford;
+
+message EventRequest {
+  repeated Event events = 1;
+}
+
+message EventReply {
+  // Success signalled by gRPC status code
+}
+
+message Event {
+  enum EventType {
+    NO_EVENT = 0;
+  }
+
+  EventType eventType = 1;
+}
+
+message StartRequest {
+  bytes databaseAccurateToBlock = 1;
+}
+
+message StartReply {
+  // Success signalled by gRPC status code
+}
+
+service Worker {
+  // Keeps the event stream open rather than sending a new request each time
+  // Note: unsure if we should keep both on-chain and off-chain events in the same stream. More investigating needed
+  rpc receiveEvent (stream EventRequest) returns (EventReply) {}
+  rpc start (StartRequest) returns (StartReply) {}
+}
