@@ -3,23 +3,19 @@ Big.DP = 40;
 Big.RM = 0;
 
 import Common from '@ethereumjs/common';
-import { Transaction } from '@ethereumjs/tx';
+import { Transaction, TxOptions } from '@ethereumjs/tx';
 import { EventEmitter } from 'events';
 const Web3Utils = require('web3-utils');
 
-import ITxPlain from './ITxPlain';
-
-interface ITransactionOpts {
-  common: Common;
-}
+import ITxPlain from './types/ITxPlain';
 
 interface ITxHex {
   nonce: string;
   gasPrice: string;
   gasLimit: string;
   to: string;
-  value: string;
-  data: string;
+  value?: string;
+  data?: string;
 }
 
 export default class Wallet {
@@ -27,8 +23,7 @@ export default class Wallet {
   private envKeyAddress: string;
   private envKeySecret: string;
 
-  private opts: ITransactionOpts | null;
-  private label: string;
+  private opts: TxOptions | undefined;
 
   protected gasPrices: { [key: number]: Big };
 
@@ -43,9 +38,6 @@ export default class Wallet {
     this.provider = provider;
     this.envKeyAddress = envKeyAddress;
     this.envKeySecret = envKeySecret;
-
-    this.opts = null;
-    this.label = this.address.slice(0, 6);
 
     // Nothing is ever deleted from _gasPrices. If this code were
     // to run forever, this would cause memory to grow forever (very slowly).
@@ -69,12 +61,16 @@ export default class Wallet {
   }
 
   public get address(): string {
-    return process.env[this.envKeyAddress];
+    return String(process.env[this.envKeyAddress]);
+  }
+
+  public get label(): string {
+    return this.address.slice(0, 6);
   }
 
   public get emptyTx(): ITxPlain {
     return {
-      gasPrice: undefined,
+      gasPrice: Big('0'),
       gasLimit: Big('21000'),
       to: this.address,
       value: Web3Utils.toHex('0'),
@@ -152,7 +148,7 @@ export default class Wallet {
   private sign(txHex: ITxHex): string {
     // txHex.from is automatically determined from private key
     const tx = Transaction.fromTxData(txHex, this.opts);
-    const privateKey = Buffer.from(process.env[this.envKeySecret], 'hex');
+    const privateKey = Buffer.from(String(process.env[this.envKeySecret]), 'hex');
     return '0x' + tx.sign(privateKey).serialize().toString('hex');
   }
 
