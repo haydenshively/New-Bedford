@@ -44,9 +44,10 @@ export default class Wallet {
     this.gasPrices = {};
   }
 
-  async init() {
+  async init(): Promise<void> {
     const chainID = await this.provider.eth.getChainId();
     switch (chainID) {
+      case 1337: // ganache
       case 1:
         this.opts = {
           common: new Common({ chain: 'mainnet', hardfork: 'petersburg' }),

@@ -53,7 +53,9 @@ describe('Wallet Test', () => {
     } catch {
       try {
         mainnetProvider.currentProvider.connection.destroy();
-      } catch {}
+      } catch {
+        console.log("Cannot close HTTP provider's connection");
+      }
     }
   });
 
@@ -76,8 +78,13 @@ describe('Wallet Test', () => {
     assert(typeof wallet['sign'](tx) === 'string');
     tx.data = Web3Utils.toHex('Hello World');
     assert(typeof wallet['sign'](tx) === 'string');
-    delete tx.value;
+    tx.value = undefined;
     assert(typeof wallet['sign'](tx) === 'string');
+  });
+
+  it('should initialize chain opts', async () => {
+    await wallet.init();
+    assert(wallet['opts'] !== undefined);
   });
 
   it('should send a transaction', async () => {
@@ -92,5 +99,5 @@ describe('Wallet Test', () => {
     assert(receipt.to === wallet.address.toLowerCase());
     assert(receipt.to === receipt.from);
     assert(receipt.gasUsed === 21000);
-  }).timeout(120000);
+  });
 });
