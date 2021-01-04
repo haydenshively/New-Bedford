@@ -2,7 +2,7 @@ const Web3 = require('web3');
 const net = require('net');
 
 import { EventEmitter } from 'events';
-import IProviderSpec from './IProviderSpec';
+import IProviderSpec from './types/IProviderSpec';
 
 const IPCProvider = (path: string) => {
   return new Web3(path, net);
