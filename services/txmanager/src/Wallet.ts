@@ -7,7 +7,7 @@ import { Transaction, TxOptions } from '@ethereumjs/tx';
 import { EventEmitter } from 'events';
 const Web3Utils = require('web3-utils');
 
-import ITxPlain from './types/ITxPlain';
+import ITx from './types/ITx';
 
 interface ITxHex {
   nonce: string;
@@ -68,7 +68,7 @@ export default class Wallet {
     return this.address.slice(0, 6);
   }
 
-  public get emptyTx(): ITxPlain {
+  public get emptyTx(): ITx {
     return {
       gasPrice: Big('0'),
       gasLimit: Big('21000'),
@@ -98,7 +98,7 @@ export default class Wallet {
    * @returns estimated amount of gas that the tx will require
    *
    */
-  public estimateGas(tx: ITxPlain, nonce: number = 0): Promise<number> {
+  public estimateGas(tx: ITx, nonce: number = 0): Promise<number> {
     return this.provider.eth.estimateGas({
       ...this.parse(tx, nonce),
       from: this.address,
@@ -123,7 +123,7 @@ export default class Wallet {
    * };
    * const sentTx = wallet.signAndSend(tx, 0);
    */
-  public signAndSend(tx: ITxPlain, nonce: number): EventEmitter {
+  public signAndSend(tx: ITx, nonce: number): EventEmitter {
     if ('gasPrice' in tx) this.gasPrices[nonce] = tx.gasPrice;
     return this.send(this.sign(this.parse(tx, nonce)));
   }
@@ -169,7 +169,7 @@ export default class Wallet {
    * @param nonce the transaction's nonce, as an integer (base 10)
    * @returns the transaction with all fields converted to hex
    */
-  private parse(tx: ITxPlain, nonce: number): ITxHex {
+  private parse(tx: ITx, nonce: number): ITxHex {
     return {
       nonce: Web3Utils.toHex(nonce),
       gasPrice: Web3Utils.toHex(tx.gasPrice.toFixed(0)),
