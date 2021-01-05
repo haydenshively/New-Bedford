@@ -1,6 +1,6 @@
 // test dependenices -----------------------------------------------
 const assert = require('assert');
-import Wallet from '../src/Wallet';
+import Wallet from '../../src/blocks/Wallet';
 // -----------------------------------------------------------------
 // web3 dependencies -----------------------------------------------
 require('dotenv-safe').config();
@@ -8,7 +8,7 @@ require('dotenv-safe').config();
 const ganache = require('ganache-cli');
 const Web3 = require('web3');
 
-import { ProviderFor } from '../src/Providers';
+import { ProviderFor } from '../../src/blocks/Providers';
 // -----------------------------------------------------------------
 // math dependencies -----------------------------------------------
 import Big from 'big.js';
