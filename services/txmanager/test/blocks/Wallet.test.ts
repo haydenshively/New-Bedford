@@ -1,5 +1,5 @@
 // test dependenices -----------------------------------------------
-const assert = require('assert');
+const expect = require('chai').expect;
 import Wallet from '../../src/blocks/Wallet';
 // -----------------------------------------------------------------
 // web3 dependencies -----------------------------------------------
@@ -61,8 +61,8 @@ describe('Wallet Test', () => {
 
   it('should retrieve lowest unconfirmed nonce', async () => {
     const nonce = await wallet.getLowestLiquidNonce();
-    assert(typeof nonce === 'number');
-    assert(Number.isInteger(nonce));
+    expect(typeof nonce).to.equal('number');
+    expect(Number.isInteger(nonce)).to.be.true;
   });
 
   it('should sign transactions', () => {
@@ -75,16 +75,16 @@ describe('Wallet Test', () => {
       data: undefined,
     };
 
-    assert(typeof wallet['sign'](tx) === 'string');
+    expect(typeof wallet['sign'](tx)).to.equal('string');
     tx.data = Web3Utils.toHex('Hello World');
-    assert(typeof wallet['sign'](tx) === 'string');
+    expect(typeof wallet['sign'](tx)).to.equal('string');
     tx.value = undefined;
-    assert(typeof wallet['sign'](tx) === 'string');
+    expect(typeof wallet['sign'](tx)).to.equal('string');
   });
 
   it('should initialize chain opts', async () => {
     await wallet.init();
-    assert(wallet['opts'] !== undefined);
+    expect(wallet['opts']).to.not.be.undefined;
   });
 
   it('should send a transaction', async () => {
@@ -95,9 +95,9 @@ describe('Wallet Test', () => {
 
     const receipt = Object(await sentTx);
 
-    assert(receipt.status === true);
-    assert(receipt.to === wallet.address.toLowerCase());
-    assert(receipt.to === receipt.from);
-    assert(receipt.gasUsed === 21000);
+    expect(receipt.status).to.be.true;
+    expect(receipt.to).to.equal(wallet.address.toLowerCase());
+    expect(receipt.to).to.equal(receipt.from);
+    expect(receipt.gasUsed).to.equal(21000);
   });
 });

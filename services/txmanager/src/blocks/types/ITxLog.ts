@@ -7,4 +7,4 @@ export default interface ITxLog {
   blockNumber: number;
   transactionHash: string; // tx index position in the block
   transactionIndex: number; // tx hash
-}
+};

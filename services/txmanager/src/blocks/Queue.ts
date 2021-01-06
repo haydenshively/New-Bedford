@@ -1,7 +1,4 @@
 import Big from 'big.js';
-Big.DP = 40;
-Big.RM = 0;
-const winston = require('winston');
 
 import { EventEmitter } from 'events';
 
@@ -9,11 +6,15 @@ import ITx from './types/ITx';
 import ITxReceipt from './types/ITxReceipt';
 import Wallet from './Wallet';
 
+Big.DP = 40;
+Big.RM = 0;
+const winston = require('winston');
+
 export default class TxQueue {
   private wallet: Wallet;
 
   private lowestLiquidNonce: number;
-  private queue: ITx[];
+  private readonly queue: ITx[];
 
   constructor(wallet: Wallet) {
     this.wallet = wallet;
@@ -90,7 +91,7 @@ export default class TxQueue {
    * @returns estimated amount of gas that the tx will require
    *
    */
-  public estimateGas(tx: ITx, idx: number = 0): Promise<number> {
+  public estimateGas(tx: ITx, idx = 0): Promise<number> {
     return this.wallet.estimateGas(tx, this.nonce(idx));
   }
 
@@ -240,6 +241,6 @@ export default class TxQueue {
       }
     }
 
-    winston.info(err.name + ' ' + err.message);
+    winston.info(`${err.name} ${err.message}`);
   }
 }

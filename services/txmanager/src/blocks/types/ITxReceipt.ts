@@ -12,4 +12,4 @@ export default interface ITxReceipt {
   cumulativeGasUsed: number; // gas used up until this tx in the block
   gasUsed: number; // gas used by this tx
   logs: ITxLog[];
-}
+};

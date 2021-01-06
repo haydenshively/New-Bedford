@@ -1,8 +1,9 @@
+import { EventEmitter } from 'events';
+
+import IProviderSpec from './types/IProviderSpec';
+
 const Web3 = require('web3');
 const net = require('net');
-
-import { EventEmitter } from 'events';
-import IProviderSpec from './types/IProviderSpec';
 
 const IPCProvider = (path: string) => {
   return new Web3(path, net);
@@ -38,6 +39,9 @@ export const ProviderFor = (chain: string, spec: IProviderSpec): any => {
       return HTTPProvider(`https://${chain}.infura.io/v3/${process.env[String(spec.envKeyID)]}`);
     case 'HTTP_Alchemy':
       return HTTPProvider(`https://eth-${chain}.alchemyapi.io/v2/${process.env[String(spec.envKeyKey)]}`);
+    default:
+      console.error(`Provider type ${spec.type} is unknown`);
+      return undefined;
   }
 };
 
@@ -73,7 +77,7 @@ export class MultiSendProvider {
 
     // Use proxy to match ordinary Web3 API
     return new Proxy(this, {
-      get: function (target, prop, receiver) {
+      get(target, prop, receiver) {
         if (prop === 'eth') return receiver;
         if (prop in target) return target[String(prop)];
         // fallback
@@ -88,19 +92,19 @@ export class MultiSendProvider {
 
   sendSignedTransaction(signedTx: string): EventEmitter {
     const sentTx = this.providers[0].eth.sendSignedTransaction(signedTx);
-    for (let i = 1; i < this.providers.length; i++)
+    for (let i = 1; i < this.providers.length; i += 1)
       this.providers[i].eth
         .sendSignedTransaction(signedTx)
-        .on('error', (e: Error) => console.log(e.name + ' ' + e.message));
+        .on('error', (e: Error) => console.log(`${e.name} ${e.message}`));
     return sentTx;
   }
 
-  clearSubscriptions() {
+  clearSubscriptions(): void {
     this.providers.forEach((p) => p.eth.clearSubscriptions());
   }
 
   // Double-underscore because this isn't part of the web3.eth namespace
-  __close() {
+  __close(): void {
     this.providers.forEach((p) => {
       try {
         p.currentProvider.connection.close();
