@@ -3,4 +3,4 @@ export default interface IProviderSpec {
   envKeyPath?: string;
   envKeyID?: string;
   envKeyKey?: string;
-};
+}

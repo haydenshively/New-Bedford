@@ -6,4 +6,4 @@ export default interface ITx {
   to: string;
   value?: string;
   data?: string;
-};
+}

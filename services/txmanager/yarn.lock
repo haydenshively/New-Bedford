@@ -6320,7 +6320,7 @@ web3-core-subscriptions@1.3.1:
     underscore "1.9.1"
     web3-core-helpers "1.3.1"
 
-web3-core@1.3.1:
+web3-core@1.3.1, web3-core@^1.3.1:
   version "1.3.1"
   resolved "https://registry.yarnpkg.com/web3-core/-/web3-core-1.3.1.tgz#fb0fc5d952a7f3d580a7e6155d2f28be064e64cb"
   integrity sha512-QlBwSyjl2pqYUBE7lH9PfLxa8j6AzzAtvLUqkgoaaFJYLP/+XavW1n6dhVCTq+U3L3eNc+bMp9GLjGDJNXMnGg==
@@ -6409,7 +6409,7 @@ web3-eth-personal@1.3.1:
     web3-net "1.3.1"
     web3-utils "1.3.1"
 
-web3-eth@1.3.1:
+web3-eth@1.3.1, web3-eth@^1.3.1:
   version "1.3.1"
   resolved "https://registry.yarnpkg.com/web3-eth/-/web3-eth-1.3.1.tgz#60ac4b58e5fd17b8dbbb8378abd63b02e8326727"
   integrity sha512-e4iL8ovj0zNxzbv4LTHEv9VS03FxKlAZD+95MolwAqtVoUnKC2H9X6dli0w6eyXP0aKw+mwY0g0CWQHzqZvtXw==
@@ -6474,7 +6474,7 @@ web3-shh@1.3.1:
     web3-core-subscriptions "1.3.1"
     web3-net "1.3.1"
 
-web3-utils@1.3.1:
+web3-utils@1.3.1, web3-utils@^1.3.1:
   version "1.3.1"
   resolved "https://registry.yarnpkg.com/web3-utils/-/web3-utils-1.3.1.tgz#9aa880dd8c9463fe5c099107889f86a085370c2e"
   integrity sha512-9gPwFm8SXtIJuzdrZ37PRlalu40fufXxo+H2PiCwaO6RpKGAvlUlWU0qQbyToFNXg7W2H8djEgoAVac8NLMCKQ==

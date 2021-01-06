@@ -1,9 +1,7 @@
 import Big from 'big.js';
-
-import { EventEmitter } from 'events';
+import { PromiEvent, TransactionReceipt as ITxReceipt } from 'web3-core';
 
 import ITx from './types/ITx';
-import ITxReceipt from './types/ITxReceipt';
 import Wallet from './Wallet';
 
 Big.DP = 40;
@@ -14,6 +12,7 @@ export default class TxQueue {
   private wallet: Wallet;
 
   private lowestLiquidNonce: number;
+
   private readonly queue: ITx[];
 
   constructor(wallet: Wallet) {
@@ -187,19 +186,25 @@ export default class TxQueue {
     this.setupTxEvents(sentTx, callback);
   }
 
-  private setupTxEvents(sentTx: EventEmitter, callback: (receipt: ITxReceipt | null) => void) {
+  private setupTxEvents(
+    sentTx: PromiEvent<ITxReceipt>,
+    callback: (receipt: ITxReceipt | null) => void,
+  ) {
     const label = `💸 *Transaction* ${this.wallet.label} `;
 
     // After receiving the transaction hash, log send
     sentTx.on('transactionHash', (hash) => winston.info(`${label} sent ${hash.slice(0, 6)}`));
     // After receiving receipt, log success and rebase
-    sentTx.on('receipt', (receipt: ITxReceipt) => {
+    sentTx.on('receipt', (receipt) => {
+      // @ts-ignore: I know the removeAllListeners function works
       sentTx.removeAllListeners();
       this.onTxReceipt(receipt);
       callback(receipt);
     });
     // After receiving an error, check if it occurred on or off chain
+    // @ts-ignore: I know the (Error, ITxReceipt | undefined) callback type works
     sentTx.on('error', (err: Error, receipt: ITxReceipt | undefined) => {
+      // @ts-ignore: I know the removeAllListeners function works
       sentTx.removeAllListeners();
 
       if (receipt !== undefined) {
@@ -215,7 +220,7 @@ export default class TxQueue {
   private onTxReceipt(receipt: ITxReceipt): void {
     this.rebase();
     // Logging
-    const label = this.wallet.label + ':' + receipt.transactionHash.slice(0, 6);
+    const label = `${this.wallet.label}:${receipt.transactionHash.slice(0, 6)}`;
     const linkText = receipt.status ? 'successful!' : 'reverted';
     winston.info(`${label}was <https://etherscan.io/tx/${receipt.transactionHash}|${linkText}>`);
   }

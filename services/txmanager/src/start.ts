@@ -7,6 +7,6 @@ client.on('connect', function() {
 });
 */
 
-import { WorkerClient } from './proto/worker_grpc_pb';
+// import { WorkerClient } from './proto/worker_grpc_pb';
 
-console.log('Hello from delegator');
+// console.log('Hello from delegator');
