@@ -1,25 +1,25 @@
-import { EventEmitter } from 'events';
+import net from 'net';
+import { chain, WebsocketProvider, IpcProvider } from 'web3-core';
+import { Eth } from 'web3-eth';
+import Web3 from 'web3';
 
 import IProviderSpec from './types/IProviderSpec';
 
-const Web3 = require('web3');
-const net = require('net');
-
-const IPCProvider = (path: string) => {
-  return new Web3(path, net);
+const IPCProvider = (path: string): Web3 => {
+  return new Web3(new Web3.providers.IpcProvider(path, net));
 };
-const WSProvider = (path: string) => {
-  return new Web3(path);
+const WSProvider = (path: string): Web3 => {
+  return new Web3(new Web3.providers.WebsocketProvider(path));
 };
-const HTTPProvider = (path: string) => {
-  return new Web3(path);
+const HTTPProvider = (path: string): Web3 => {
+  return new Web3(new Web3.providers.HttpProvider(path));
 };
 
 /**
  *
  * @param chain the chain, e.g "mainnet"
  * @param spec see example below
- * @returns a Web3 provider
+ * @returns a Web3 instance
  *
  * @example
  * {
@@ -27,7 +27,7 @@ const HTTPProvider = (path: string) => {
  *   envKeyID: "PROVIDER_INFURA_ID"
  * }
  */
-export const ProviderFor = (chain: string, spec: IProviderSpec): any => {
+export const ProviderFor = (chain: chain, spec: IProviderSpec): Web3 => {
   switch (spec.type) {
     case 'IPC':
       return IPCProvider(String(process.env[String(spec.envKeyPath)]));
@@ -40,8 +40,7 @@ export const ProviderFor = (chain: string, spec: IProviderSpec): any => {
     case 'HTTP_Alchemy':
       return HTTPProvider(`https://eth-${chain}.alchemyapi.io/v2/${process.env[String(spec.envKeyKey)]}`);
     default:
-      console.error(`Provider type ${spec.type} is unknown`);
-      return undefined;
+      process.exit(123);
   }
 };
 
@@ -63,34 +62,32 @@ export const ProviderFor = (chain: string, spec: IProviderSpec): any => {
  *   }
  * ]
  */
-const ProvidersFor = (chain: string, specs: IProviderSpec[]): any[] => {
+const ProvidersFor = (chain: chain, specs: IProviderSpec[]): Web3[] => {
   return specs.map((spec) => ProviderFor(chain, spec));
 };
 
 export class MultiSendProvider {
-  [key: string]: any;
+  public providers: Web3[];
 
-  public providers: any[];
-
-  constructor(chain: string, specs: IProviderSpec[]) {
+  constructor(chain: chain, specs: IProviderSpec[]) {
     this.providers = ProvidersFor(chain, specs);
 
     // Use proxy to match ordinary Web3 API
     return new Proxy(this, {
       get(target, prop, receiver) {
         if (prop === 'eth') return receiver;
-        if (prop in target) return target[String(prop)];
+        if (prop in target) return target[prop as keyof MultiSendProvider];
         // fallback
-        return target.providers[0].eth[prop];
+        return target.providers[0].eth[prop as keyof Eth];
       },
     });
   }
 
-  call(tx: object, block: number): Promise<object> {
+  call(tx: object, block: number) {
     return this.providers[0].eth.call(tx, block);
   }
 
-  sendSignedTransaction(signedTx: string): EventEmitter {
+  sendSignedTransaction(signedTx: string) {
     const sentTx = this.providers[0].eth.sendSignedTransaction(signedTx);
     for (let i = 1; i < this.providers.length; i += 1)
       this.providers[i].eth
@@ -99,26 +96,42 @@ export class MultiSendProvider {
     return sentTx;
   }
 
-  clearSubscriptions(): void {
-    this.providers.forEach((p) => p.eth.clearSubscriptions());
+  clearSubscriptions(callback: (error: Error | undefined, result: boolean) => void): void {
+    const promises = this.providers.map(
+      (p) =>
+        new Promise((resolve, reject) =>
+          p.eth.clearSubscriptions((error, result) => {
+            if (result) resolve(error);
+            else reject(error);
+          }),
+        ),
+    );
+
+    Promise.all(promises).then(
+      (_res) => callback(undefined, true),
+      (res) => callback(res, false),
+    );
   }
 
   // Double-underscore because this isn't part of the web3.eth namespace
   __close(): void {
     this.providers.forEach((p) => {
-      try {
-        p.currentProvider.connection.close();
-      } catch {
+      if (p.currentProvider === null) return;
+      if (
+        p.currentProvider.constructor.name === 'WebsocketProvider' ||
+        p.currentProvider.constructor.name === 'IpcProvider'
+      )
         try {
-          p.currentProvider.connection.destroy();
+          // @ts-ignore: We already checked that type is valid
+          p.currentProvider.connection.close();
         } catch {
-          console.log("Cannot close HTTP provider's connection");
+          // @ts-ignore: We already checked that type is valid
+          p.currentProvider.connection.destory();
         }
-      }
     });
   }
 
-  get currentProvider(): object {
+  get currentProvider() {
     return { connection: { close: this.__close.bind(this) } };
   }
 }

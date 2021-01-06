@@ -6,7 +6,7 @@ import Wallet from '../../src/blocks/Wallet';
 require('dotenv-safe').config();
 
 const ganache = require('ganache-cli');
-const Web3 = require('web3');
+import Web3 from 'web3';
 
 import { ProviderFor } from '../../src/blocks/Providers';
 // -----------------------------------------------------------------
@@ -19,8 +19,8 @@ const Web3Utils = require('web3-utils');
 // -----------------------------------------------------------------
 
 describe('Wallet Test', () => {
-  let mainnetProvider: any;
-  let ganacheProvider: any;
+  let mainnetProvider: Web3;
+  let ganacheProvider: Web3;
   let wallet: Wallet;
 
   before(() => {
@@ -46,17 +46,20 @@ describe('Wallet Test', () => {
   });
 
   after(() => {
-    ganacheProvider.eth.clearSubscriptions();
-    mainnetProvider.eth.clearSubscriptions();
-    try {
-      mainnetProvider.currentProvider.connection.close();
-    } catch {
+    ganacheProvider.eth.clearSubscriptions(() => {});
+    mainnetProvider.eth.clearSubscriptions(() => {});
+    if (
+      mainnetProvider.currentProvider !== null &&
+      (mainnetProvider.currentProvider.constructor.name === 'WebsocketProvider' ||
+        mainnetProvider.currentProvider.constructor.name === 'IpcProvider')
+    )
       try {
-        mainnetProvider.currentProvider.connection.destroy();
+        // @ts-ignore
+        mainnetProvider.currentProvider.connection.close();
       } catch {
-        console.log("Cannot close HTTP provider's connection");
+        // @ts-ignore
+        mainnetProvider.currentProvider.connection.destroy();
       }
-    }
   });
 
   it('should retrieve lowest unconfirmed nonce', async () => {
@@ -99,5 +102,14 @@ describe('Wallet Test', () => {
     expect(receipt.to).to.equal(wallet.address.toLowerCase());
     expect(receipt.to).to.equal(receipt.from);
     expect(receipt.gasUsed).to.equal(21000);
+  });
+
+  it('should estimate gas', async () => {
+    const nonce = await wallet.getLowestLiquidNonce();
+    const tx = wallet.emptyTx;
+    tx.gasLimit = tx.gasLimit.mul('5');
+
+    const gas = await wallet.estimateGas(tx, nonce);
+    expect(gas).to.equal(21000);
   });
 });

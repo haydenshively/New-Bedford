@@ -1,14 +1,14 @@
 import Big from 'big.js';
-
 import Common from '@ethereumjs/common';
-import { Transaction, TxOptions } from '@ethereumjs/tx';
-import { EventEmitter } from 'events';
+import { Transaction as EthJSTx, TxOptions as EthJSTxOpts } from '@ethereumjs/tx';
+import { PromiEvent, TransactionReceipt as ITxReceipt } from 'web3-core';
+import Web3Utils from 'web3-utils';
+import Web3 from 'web3';
 
 import ITx from './types/ITx';
 
 Big.DP = 40;
 Big.RM = 0;
-const Web3Utils = require('web3-utils');
 
 interface ITxHex {
   nonce: string;
@@ -20,11 +20,13 @@ interface ITxHex {
 }
 
 export default class Wallet {
-  private provider: any;
+  private provider: Web3;
+
   private readonly envKeyAddress: string;
+
   private readonly envKeySecret: string;
 
-  private opts: TxOptions | undefined;
+  private opts: EthJSTxOpts | undefined;
 
   protected gasPrices: { [key: number]: Big };
 
@@ -35,12 +37,12 @@ export default class Wallet {
    * @param envKeyAddress name of env variable containing the address
    * @param envKeySecret name of env variable containing private key
    */
-  constructor(provider: any, envKeyAddress: string, envKeySecret: string) {
+  constructor(provider: Web3, envKeyAddress: string, envKeySecret: string) {
     this.provider = provider;
     this.envKeyAddress = envKeyAddress;
     this.envKeySecret = envKeySecret;
 
-    // Nothing is ever deleted from _gasPrices. If this code were
+    // Nothing is ever deleted from gasPrices. If this code were
     // to run forever, this would cause memory to grow forever (very slowly).
     this.gasPrices = {};
   }
@@ -60,7 +62,7 @@ export default class Wallet {
         };
         break;
       default:
-        console.error(`Chain ID ${chainID} is unknown`);
+        process.exit(456);
     }
   }
 
@@ -104,8 +106,13 @@ export default class Wallet {
    */
   public estimateGas(tx: ITx, nonce = 0): Promise<number> {
     return this.provider.eth.estimateGas({
-      ...Wallet.parse(tx, nonce),
       from: this.address,
+      to: tx.to,
+      value: tx.value,
+      gas: Web3Utils.toHex(tx.gasLimit.toFixed(0)),
+      gasPrice: Web3Utils.toHex(tx.gasPrice.toFixed(0)),
+      data: tx.data,
+      nonce,
     });
   }
 
@@ -127,7 +134,7 @@ export default class Wallet {
    * };
    * const sentTx = wallet.signAndSend(tx, 0);
    */
-  public signAndSend(tx: ITx, nonce: number): EventEmitter {
+  public signAndSend(tx: ITx, nonce: number): PromiEvent<ITxReceipt> {
     if ('gasPrice' in tx) this.gasPrices[nonce] = tx.gasPrice;
     return this.send(this.sign(Wallet.parse(tx, nonce)));
   }
@@ -151,9 +158,9 @@ export default class Wallet {
    */
   private sign(txHex: ITxHex): string {
     // txHex.from is automatically determined from private key
-    const tx = Transaction.fromTxData(txHex, this.opts);
+    const tx = EthJSTx.fromTxData(txHex, this.opts);
     const privateKey = Buffer.from(String(process.env[this.envKeySecret]), 'hex');
-    return '0x' + tx.sign(privateKey).serialize().toString('hex');
+    return `0x${tx.sign(privateKey).serialize().toString('hex')}`;
   }
 
   /**
@@ -162,7 +169,7 @@ export default class Wallet {
    * @param signedTx a transaction that's been signed by this wallet
    * @returns See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
    */
-  private send(signedTx: string): EventEmitter {
+  private send(signedTx: string): PromiEvent<ITxReceipt> {
     return this.provider.eth.sendSignedTransaction(signedTx);
   }
 
