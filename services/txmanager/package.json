@@ -46,7 +46,7 @@
   "scripts": {
     "start": "node .",
     "build": "npx tsc -p .",
-    "lint": "eslint '*/**/*.{js,ts,tsx}' --fix",
+    "lint": "eslint '*/**/*.{js,ts,tsx}'",
     "test": "npx mocha -r ts-node/register test/**/*.test.ts",
     "build-proto": "../shared/build-proto.sh ../shared/proto/*"
   },

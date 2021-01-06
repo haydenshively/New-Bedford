@@ -1,13 +1,14 @@
 import Big from 'big.js';
-Big.DP = 40;
-Big.RM = 0;
 
 import Common from '@ethereumjs/common';
 import { Transaction, TxOptions } from '@ethereumjs/tx';
 import { EventEmitter } from 'events';
-const Web3Utils = require('web3-utils');
 
 import ITx from './types/ITx';
+
+Big.DP = 40;
+Big.RM = 0;
+const Web3Utils = require('web3-utils');
 
 interface ITxHex {
   nonce: string;
@@ -20,8 +21,8 @@ interface ITxHex {
 
 export default class Wallet {
   private provider: any;
-  private envKeyAddress: string;
-  private envKeySecret: string;
+  private readonly envKeyAddress: string;
+  private readonly envKeySecret: string;
 
   private opts: TxOptions | undefined;
 
@@ -58,6 +59,8 @@ export default class Wallet {
           common: new Common({ chain: 'ropsten', hardfork: 'petersburg' }),
         };
         break;
+      default:
+        console.error(`Chain ID ${chainID} is unknown`);
     }
   }
 
@@ -99,9 +102,9 @@ export default class Wallet {
    * @returns estimated amount of gas that the tx will require
    *
    */
-  public estimateGas(tx: ITx, nonce: number = 0): Promise<number> {
+  public estimateGas(tx: ITx, nonce = 0): Promise<number> {
     return this.provider.eth.estimateGas({
-      ...this.parse(tx, nonce),
+      ...Wallet.parse(tx, nonce),
       from: this.address,
     });
   }
@@ -126,7 +129,7 @@ export default class Wallet {
    */
   public signAndSend(tx: ITx, nonce: number): EventEmitter {
     if ('gasPrice' in tx) this.gasPrices[nonce] = tx.gasPrice;
-    return this.send(this.sign(this.parse(tx, nonce)));
+    return this.send(this.sign(Wallet.parse(tx, nonce)));
   }
 
   /**
@@ -170,7 +173,7 @@ export default class Wallet {
    * @param nonce the transaction's nonce, as an integer (base 10)
    * @returns the transaction with all fields converted to hex
    */
-  private parse(tx: ITx, nonce: number): ITxHex {
+  private static parse(tx: ITx, nonce: number): ITxHex {
     return {
       nonce: Web3Utils.toHex(nonce),
       gasPrice: Web3Utils.toHex(tx.gasPrice.toFixed(0)),
