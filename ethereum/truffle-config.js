@@ -1,4 +1,6 @@
-require("dotenv-safe").config();
+require("dotenv-safe").config({
+  example: process.env.CI ? ".env.ci.example" : ".env.example",
+});
 
 const ganache = require("ganache-cli");
 const HDWalletProvider = require("@truffle/hdwallet-provider");
@@ -6,10 +8,11 @@ const HDWalletProvider = require("@truffle/hdwallet-provider");
 const { ProviderFor } = require("./providers");
 
 // IPC provider is the fastest for tests that can run on the most up-to-date
-// mainnet data, but it can't be used for forking at a specific block
-const mainnet_ipc = ProviderFor("mainnet", {
-  type: "IPC",
-  envKeyPath: "PROVIDER_IPC_PATH",
+// mainnet data, but it can't be used for forking at a specific block.
+// WS provider is used in order to run tests in the CI
+const mainnet_ws = ProviderFor("mainnet", {
+  type: "WS_Infura",
+  envKeyID: "PROVIDER_INFURA_ID",
 });
 // Alchemy allows for forking at a specific block, which lets us use
 // hard-coded values to test liquidation abilities
@@ -20,11 +23,11 @@ const mainnet_alchemy = ProviderFor("mainnet", {
 const maxUINT256 = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
 const ganacheServerConfig = {
-  fork: mainnet_ipc,
+  fork: mainnet_ws,
   accounts: [
     {
       balance: maxUINT256,
-      secretKey: "0x" + process.env.ACCOUNT_SECRET_TEST,
+      // secretKey: "0x" + process.env.ACCOUNT_SECRET_TEST,
     },
     { balance: "0x0" },
     { balance: "0x0" },

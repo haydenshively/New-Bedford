@@ -4,10 +4,11 @@
 name: Node.js CI
 
 on:
-  push:
-    tags: [ ready-to-test ]
+  schedule:
+    - cron: '0 0 * * *'
   pull_request:
-    branches: [ master ]
+    branches: 
+      - master
 
 env:
   ACCOUNT_ADDRESS_TEST: ${{ secrets.ACCOUNT_ADDRESS_TEST }}
@@ -30,51 +31,52 @@ env:
   SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
 jobs:
-  Tests:
+  test-ethereum:
 
-    runs-on: [ self-hosted, psql-db-access ]
-
-    strategy:
-      matrix:
-        node-version: [14.x]
+    runs-on: ubuntu-20.04
+    defaults:
+      run:
+        shell: bash
+        working-directory: ethereum
 
     steps:
     - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js 14
       uses: actions/setup-node@v1
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '14.x'
     
     - name: Create .env file
       run: |
         touch .env
-        echo "ACCOUNT_ADDRESS_TEST="$ACCOUNT_ADDRESS_TEST >> .env
-        echo "ACCOUNT_SECRET_TEST"=$ACCOUNT_SECRET_TEST >> .env
-        echo "COINBASE_ENDPOINT"=$COINBASE_ENDPOINT >> .env
-        echo "COMPOUND_ENDPOINT"=$COMPOUND_ENDPOINT >> .env
-        echo "GAS_STATION_ENDPOINT"=$GAS_STATION_ENDPOINT >> .env
-        echo "CB_ACCESS_KEY"=$CB_ACCESS_KEY >> .env
-        echo "CB_ACCESS_PASSPHRASE"=$CB_ACCESS_PASSPHRASE >> .env
-        echo "CB_ACCESS_SECRET"=$CB_ACCESS_SECRET >> .env
-        echo "PROVIDER_IPC_PATH"=$PROVIDER_IPC_PATH >> .env
         echo "PROVIDER_INFURA_ID"=$PROVIDER_INFURA_ID >> .env
-        echo "PROVIDER_INFURA_SECRET"=$PROVIDER_INFURA_SECRET >> .env
         echo "PROVIDER_ALCHEMY_KEY"=$PROVIDER_ALCHEMY_KEY >> .env
-        echo "PGDATABASE"=$PGDATABASE >> .env
-        echo "PGHOST"=$PGHOST >> .env
-        echo "PGPASSWORD"=$PGPASSWORD >> .env
-        echo "PGPORT"=$PGPORT >> .env
-        echo "PGUSER"=$PGUSER >> .env
-        echo "SLACK_WEBHOOK"=$SLACK_WEBHOOK >> .env
-        cat .env
-      shell: bash
     
-    - name: Install dependencies
-      run: |
-        yarn install --ignore-optional
-        # The tfjs folks haven't published arm binaries yet
-        # yarn add @tensorflow/tfjs-node
-        # npm rebuild @tensorflow/tfjs-node --build-from-source
-      shell: bash
+    - run: yarn install
+    - run: yarn test-latest-block
+    - run: yarn test-known-block
 
+  test-services-txmanager:
+
+    runs-on: ubuntu-20.04
+    defaults:
+      run:
+        shell: bash
+        working-directory: services/txmanager
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js 14
+      uses: actions/setup-node@v1
+      with:
+        node-version: '14.x'
+    
+    - name: Create .env file
+      run: |
+        touch .env
+        echo "PROVIDER_INFURA_ID"=$PROVIDER_INFURA_ID >> .env
+        echo "ACCOUNT_ADDRESS_TEST"=$ACCOUNT_ADDRESS_TEST >> .env
+        echo "ACCOUNT_SECRET_TEST"=$ACCOUNT_SECRET_TEST >> .env
+    
+    - run: yarn install
     - run: yarn test

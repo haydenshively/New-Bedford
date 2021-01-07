@@ -3,9 +3,12 @@ const expect = require('chai').expect;
 import Wallet from '../../src/blocks/Wallet';
 // -----------------------------------------------------------------
 // web3 dependencies -----------------------------------------------
-require('dotenv-safe').config();
+require('dotenv-safe').config({
+  example: process.env.CI ? '.env.ci.example' : '.env.example',
+});
 
 const ganache = require('ganache-cli');
+import Web3Utils from 'web3-utils';
 import Web3 from 'web3';
 
 import { ProviderFor } from '../../src/blocks/Providers';
@@ -14,8 +17,6 @@ import { ProviderFor } from '../../src/blocks/Providers';
 import Big from 'big.js';
 Big.DP = 40;
 Big.RM = 0;
-
-const Web3Utils = require('web3-utils');
 // -----------------------------------------------------------------
 
 describe('Wallet Test', () => {
@@ -25,8 +26,8 @@ describe('Wallet Test', () => {
 
   before(() => {
     mainnetProvider = ProviderFor('mainnet', {
-      type: 'IPC',
-      envKeyPath: 'PROVIDER_IPC_PATH',
+      type: 'WS_Infura',
+      envKeyID: 'PROVIDER_INFURA_ID',
     });
     ganacheProvider = new Web3(
       ganache.provider({
@@ -74,15 +75,11 @@ describe('Wallet Test', () => {
       gasPrice: Web3Utils.toHex('35000000000'),
       gasLimit: Web3Utils.toHex('21000'),
       to: '0x0123456789012345678901234567890123456789',
-      value: Web3Utils.toHex('0'),
-      data: undefined,
     };
 
     expect(typeof wallet['sign'](tx)).to.equal('string');
-    tx.data = Web3Utils.toHex('Hello World');
-    expect(typeof wallet['sign'](tx)).to.equal('string');
-    tx.value = undefined;
-    expect(typeof wallet['sign'](tx)).to.equal('string');
+    expect(typeof wallet['sign']({ ...tx, value: '0x0' })).to.equal('string');
+    expect(typeof wallet['sign']({ ...tx, data: Web3Utils.toHex('Hello World') })).to.equal('string');
   });
 
   it('should initialize chain opts', async () => {
