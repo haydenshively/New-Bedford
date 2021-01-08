@@ -40,7 +40,7 @@ export const ProviderFor = (chain: chain, spec: IProviderSpec): Web3 => {
     case 'HTTP_Alchemy':
       return HTTPProvider(`https://eth-${chain}.alchemyapi.io/v2/${process.env[String(spec.envKeyKey)]}`);
     default:
-      process.exit(123);
+      throw new Error(`Provider spec type ${spec.type} unknown`);
   }
 };
 

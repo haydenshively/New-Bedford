@@ -62,7 +62,7 @@ export default class Wallet {
         };
         break;
       default:
-        process.exit(456);
+        throw new Error(`Chain ID ${chainID} unknown`);
     }
   }
 
