@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "llc.goldenagetechnologies.newbedford.proto";
+option java_outer_classname = "WorkerProto";
+
+package new_bedford;
+
+// Global enums
+enum Token {
+  NO_TOKEN = 0;
+  ETH = 1;
+  cETH = 2;
+  WBTC = 3;
+  cWBTC = 4;
+  DAI = 5;
+  cDAI = 6;
+  USDC = 7;
+  cUSDC = 8;
+  USDT = 9;
+  cUSDT = 10;
+  UNI = 11;
+  cUNI = 12;
+  ZRX = 13;
+  cZRX = 14;
+  COMP = 15;
+  cCOMP = 16;
+  BAT = 17;
+  cBAT = 18;
+  SAI = 19;
+  cSAI = 20;
+  REP = 21;
+  cREP = 22;
+}
+
+enum TokenType {
+  NO_TYPE = 0;
+  V1 = 1;
+  V2 = 2;
+}
+
+// Request and response types
+message CandidateRequest {
+  enum RequestType {
+    NO_REQUEST = 0;
+    BOOTSTRAP_CANDIDATE = 1;
+    CANDIDATE_EVENT = 2;
+  }
+
+  RequestType requestType = 1;
+
+  // Both of these fields are optional, and will be filled depending on the request type
+  repeated Event events = 2;
+  repeated Candidate candidates = 3;
+}
+
+message CandidateReply {
+  // Success signalled by gRPC status code
+  enum ReplyType {
+    NO_REPLY = 0;
+    CLOSING = 1;
+    REQUEST_BOOTSTRAP = 2;
+  }
+
+  ReplyType replyType = 1;
+  int32 address = 2; // If requesting a bootstrap
+}
+
+message PriceRequest {
+  repeated TokenPrice prices = 1;
+}
+
+message PriceReply {
+  // Success signalled by gRPC status code
+}
+
+service Worker {
+  // Keeps the event stream open rather than sending a new request each time
+  // Note: unsure if we should keep both on-chain and off-chain events in the same stream. More investigating needed
+  rpc updateCandidate (stream CandidateRequest) returns (stream CandidateReply) {}
+  rpc updatePrices (stream PriceRequest) returns (PriceReply) {}
+}
+
+// Data type definitions
+message WorkerDB {
+  CompoundData compoundData = 1;
+  map<int32, Candidate> candidates = 2;
+}
+
+message CompoundData {
+  double closeFactor = 1;
+  double liquidationIncentive = 2;
+  // The following field uses the numerical equivalent of the Token enum as keys,
+  // because enums are not allowed as protobuf map keys
+  map<int32, GlobalTokenData> TokenData = 3;
+}
+
+// Can only be updated with a new Compound governance proposal, or changes to the token's ERC-20 contracts
+message GlobalTokenData {
+  Token token = 1;
+  double collateralFactor = 2;
+  TokenType tokenType = 3;
+  int32 decimals = 4;
+}
+
+message Candidate {
+  int32 address = 1;
+  map<int32, CandidateTokenData> candidateTokenData = 2;
+}
+
+message CandidateTokenData {
+  Token token = 1; // Extra, not strictly needed if an element of candidate's map
+  uint64 supplyBalance = 2;
+  uint64 supplyInterest = 3;
+  uint64 borrowBalance = 4;
+  uint64 borrowInterest = 5;
+}
+
+message Event {
+  enum EventType {
+    NO_EVENT = 0;
+    SUPPLY = 1;
+    WITHDRAW = 2;
+    BORROW = 3;
+    REPAY = 4;
+    LIQUIDATED = 5;
+  }
+
+  EventType eventType = 1;
+  int32 address = 2;
+  uint64 amount = 3;
+  uint32 decimals = 4;
+}
+
+message TokenPrice {
+  Token token = 1;
+  uint64 priceDollars = 2;
+  uint32 decimals = 3; // Always 6 for now
+  bytes signature = 4;
+}
