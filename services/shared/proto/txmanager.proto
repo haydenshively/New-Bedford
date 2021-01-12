@@ -2,6 +2,10 @@ syntax = "proto3";
 
 package new_bedford;
 
+option java_multiple_files = true;
+option java_package = "llc.goldenagetechnologies.newbedford";
+option java_outer_classname = "TxManagerProto";
+
 message LiquidateRequest {
   // Can send multiple liquidation candidates at once
   repeated LiquidationCandidate candidates = 1;
@@ -13,26 +17,25 @@ message LiquidateReply {
 
 message LiquidationCandidate {
   // Token prices, signatures, and messages (from Coinbase) corresponding to the ones that were used to determine liquidatability
-  repeated TokenData tokens = 1;
+  repeated TransactionTokenData tokens = 1;
   // Profitability (to determine maximum allowed transaction fee)
-  double profitability = 2;
+  double expectedRevenue = 2;
   // Candidate address
-  string candidateAddress = 3;
-  // Address of token to repay
-  string repayTokenAddress = 4;
-  // Address of token to seize
-  string seizeTokenAddress = 5;
+  int32 candidateAddress = 3;
+  // Address of cToken to repay
+  int32 repayTokenAddress = 4;
+  // Address of cToken to seize
+  int32 seizeTokenAddress = 5;
 }
 
-message TokenData {
+message TransactionTokenData {
   // An instance of token data, signature, and message (from Coinbase) corresponding to the ones that were used to determine liquidatability
-  string tokenAddress = 1;
-  // TODO: Is this the appropriate data format for holding the signature and the message?
+  string symbol = 1; // Ticker (BAT, USDC, etc)
   bytes signature = 2;
   bytes message = 3;
 }
 
 service TxManager {
   // Send the candidates in bulk. If multiple queries come in, the service will be able to update it's parameters.
-  rpc submitCandidates (LiquidateRequest) returns (LiquidateReply) {}
+  rpc submitCandidates (stream LiquidateRequest) returns (LiquidateReply) {}
 }

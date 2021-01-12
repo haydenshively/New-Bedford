@@ -141,17 +141,20 @@ message CandidateTokenData {
 message Event {
   enum EventType {
     NO_EVENT = 0;
-    SUPPLY = 1;
-    WITHDRAW = 2;
+    MINT = 1;
+    REDEEM = 2;
     BORROW = 3;
-    REPAY = 4;
-    LIQUIDATION = 5;
+    REPAY_BORROW = 4;
+    LIQUIDATE_BORROW = 5;
+    TRANSFER = 6;
   }
 
   EventType eventType = 1;
-  int32 address = 2;
-  uint64 amount = 3;
-  uint32 decimals = 4;
+  Token token = 2;
+
+  int32 candidateAddress = 3; // from address, in the event of a transfer
+  uint64 amount = 4;
+  int32 transferTo = 5;
 }
 
 message TokenPrice {
