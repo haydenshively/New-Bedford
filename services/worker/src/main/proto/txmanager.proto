@@ -35,7 +35,18 @@ message TransactionTokenData {
   bytes message = 3;
 }
 
+message CancelCandidateRequest {
+  repeated int32 addresses = 1;
+}
+
+message CancelCandidateReply {
+  // Success signalled by gRPC status code
+}
+
 service TxManager {
   // Send the candidates in bulk. If multiple queries come in, the service will be able to update it's parameters.
   rpc submitCandidates (stream LiquidateRequest) returns (LiquidateReply) {}
+  // Also send liquidatability falling-edge, transitions from liquidatable -> not liquidatable.
+  // (Usually from someone else liquidating, possibly from other events)
+  rpc cancelCandidates (stream CancelCandidateRequest) returns (CancelCandidateReply) {}
 }
