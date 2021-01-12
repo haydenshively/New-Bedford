@@ -1,6 +1,7 @@
-package llc.goldenagetechnologies.newbedford;
+package llc.goldenagetechnologies.newbedford.grpc;
 
 import io.grpc.stub.StreamObserver;
+import llc.goldenagetechnologies.newbedford.WorkerController;
 import llc.goldenagetechnologies.newbedford.proto.*;
 
 /**

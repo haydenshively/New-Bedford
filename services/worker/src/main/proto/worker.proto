@@ -9,27 +9,27 @@ package new_bedford;
 // Global enums
 enum Token {
   NO_TOKEN = 0;
-  ETH = 1;
+  // ETH = 1;
   cETH = 2;
-  WBTC = 3;
+  // WBTC = 3;
   cWBTC = 4;
-  DAI = 5;
+  // DAI = 5;
   cDAI = 6;
-  USDC = 7;
+  // USDC = 7;
   cUSDC = 8;
-  USDT = 9;
+  // USDT = 9;
   cUSDT = 10;
-  UNI = 11;
+  // UNI = 11;
   cUNI = 12;
-  ZRX = 13;
+  // ZRX = 13;
   cZRX = 14;
-  COMP = 15;
+  // COMP = 15;
   cCOMP = 16;
-  BAT = 17;
+  // BAT = 17;
   cBAT = 18;
-  SAI = 19;
+  // SAI = 19;
   cSAI = 20;
-  REP = 21;
+  // REP = 21;
   cREP = 22;
 }
 
@@ -43,7 +43,7 @@ enum TokenType {
 message CandidateRequest {
   enum RequestType {
     NO_REQUEST = 0;
-    BOOTSTRAP_CANDIDATE = 1;
+    BOOTSTRAP_CANDIDATE = 1; // Also interprets candidate events, post-bootstrap data
     CANDIDATE_EVENT = 2;
   }
 
@@ -62,7 +62,7 @@ message CandidateReply {
   }
 
   ReplyType replyType = 1;
-  int32 address = 2; // If requesting a bootstrap
+  string address = 2; // If requesting a bootstrap
 }
 
 message PriceRequest {
@@ -75,13 +75,14 @@ message PriceRequest {
   PriceRequestType priceRequestType = 1;
 
   // Price Oracle posting
-  repeated TokenPrice prices = 2;
+  repeated TokenPrice minPrices = 2;
+  repeated TokenPrice maxPrices = 3;
   // cToken->Token exchange rate update, send with off-chain prices
   // Decimals are 10 + underlying
-  map<int32, uint64> exchangeRates = 3;
+  map<int32, uint64> exchangeRates = 4;
 
   // On-chain price posting
-  uint32 timestamp = 4;
+  uint32 timestamp = 5;
 }
 
 message PriceReply {
@@ -121,21 +122,20 @@ message CompoundData {
 
 // Can only be updated with a new Compound governance proposal, or changes to the token's ERC-20 contracts
 message GlobalTokenData {
-  Token token = 1;
   double collateralFactor = 2;
   TokenType tokenType = 3;
-  int32 decimals = 4;
+  int32 underlyingDecimals = 4;
+  string cTokenAddress = 5;
+
+  // TODO: Merge between token and cToken data
 }
 
 message Candidate {
-  int32 address = 1;
-  map<int32, CandidateTokenData> candidateTokenData = 2;
-}
-
-message CandidateTokenData {
-  Token token = 1; // Extra, not strictly needed if an element of candidate's map
-  uint64 supplyBalance = 2; // In units of cTokens
-  uint64 borrowBalance = 4; // In units of underlying token
+  string address = 1;
+  // Maps from Token (enum int) to amount
+  // (varying decimals, supply is always 18 (cTokens), borrow is underlying decimals)
+  map<int32, uint64> supplyBalances = 2;
+  map<int32, uint64> borrowBalances = 3;
 }
 
 message Event {
@@ -161,6 +161,6 @@ message TokenPrice {
   Token token = 1;
   uint64 priceDollars = 2;
   uint32 decimals = 3; // Always 6 for now
-  bytes message = 4;
-  bytes signature = 6;
+  string message = 4;
+  string signature = 6;
 }

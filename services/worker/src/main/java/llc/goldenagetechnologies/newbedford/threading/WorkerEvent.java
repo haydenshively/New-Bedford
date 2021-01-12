@@ -1,4 +1,4 @@
-package llc.goldenagetechnologies.newbedford;
+package llc.goldenagetechnologies.newbedford.threading;
 
 import llc.goldenagetechnologies.newbedford.proto.CandidateRequest;
 import llc.goldenagetechnologies.newbedford.proto.CompoundRateRequest;

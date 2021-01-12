@@ -1,4 +1,7 @@
-package llc.goldenagetechnologies.newbedford;
+package llc.goldenagetechnologies.newbedford.threading;
+
+import llc.goldenagetechnologies.newbedford.grpc.TxManagerClient;
+import llc.goldenagetechnologies.newbedford.threading.TxManagerEvent;
 
 import java.util.concurrent.BlockingQueue;
 
@@ -8,7 +11,7 @@ import java.util.concurrent.BlockingQueue;
  */
 public class TxDelegator implements Runnable {
 
-    public TxDelegator(TxManagerClient txManagerClient, BlockingQueue<TxManagerRequest> queue) {
+    public TxDelegator(TxManagerClient txManagerClient, BlockingQueue<TxManagerEvent> queue) {
         this.txManagerClient = txManagerClient;
         this.queue = queue;
     }
@@ -18,7 +21,7 @@ public class TxDelegator implements Runnable {
         try {
             this.txManagerClient.open();
             while (true) {
-                TxManagerRequest request = queue.take();
+                TxManagerEvent request = queue.take();
                 if (request.liquidateRequest != null) {
                     txManagerClient.submitCandidates(request.liquidateRequest);
                 } else if (request.cancelCandidateRequest != null) {
@@ -34,10 +37,10 @@ public class TxDelegator implements Runnable {
         }
     }
 
-    public BlockingQueue<TxManagerRequest> getQueue() {
+    public BlockingQueue<TxManagerEvent> getQueue() {
         return queue;
     }
 
     private final TxManagerClient txManagerClient;
-    private final BlockingQueue<TxManagerRequest> queue;
+    private final BlockingQueue<TxManagerEvent> queue;
 }

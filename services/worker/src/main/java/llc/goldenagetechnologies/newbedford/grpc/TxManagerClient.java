@@ -1,7 +1,8 @@
-package llc.goldenagetechnologies.newbedford;
+package llc.goldenagetechnologies.newbedford.grpc;
 
 import io.grpc.*;
 import io.grpc.stub.*;
+import llc.goldenagetechnologies.newbedford.*;
 
 
 public class TxManagerClient {

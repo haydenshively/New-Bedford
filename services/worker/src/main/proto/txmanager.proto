@@ -21,18 +21,18 @@ message LiquidationCandidate {
   // Profitability (to determine maximum allowed transaction fee)
   double expectedRevenue = 2;
   // Candidate address
-  int32 candidateAddress = 3;
+  string candidateAddress = 3;
   // Address of cToken to repay
-  int32 repayTokenAddress = 4;
+  string repayTokenAddress = 4;
   // Address of cToken to seize
-  int32 seizeTokenAddress = 5;
+  string seizeTokenAddress = 5;
 }
 
 message TransactionTokenData {
   // An instance of token data, signature, and message (from Coinbase) corresponding to the ones that were used to determine liquidatability
   string symbol = 1; // Ticker (BAT, USDC, etc)
-  bytes signature = 2;
-  bytes message = 3;
+  string signature = 2;
+  string message = 3;
 }
 
 message CancelCandidateRequest {

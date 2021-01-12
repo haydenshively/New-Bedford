@@ -3,9 +3,12 @@ package llc.goldenagetechnologies.newbedford;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import llc.goldenagetechnologies.newbedford.grpc.TxManagerClient;
+import llc.goldenagetechnologies.newbedford.grpc.WorkerServer;
+import llc.goldenagetechnologies.newbedford.threading.TxDelegator;
+import llc.goldenagetechnologies.newbedford.threading.TxManagerEvent;
 
 import java.io.IOException;
-import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -25,10 +28,9 @@ public class Main {
 
 
         // Build Server
-        WorkerThreadExecutor workerThreadExecutor = new WorkerThreadExecutor();
-        TxDelegator txDelegator = new TxDelegator(new TxManagerClient(txManagerAddr, txManagerPort), new LinkedBlockingQueue<TxManagerRequest>());
+        TxDelegator txDelegator = new TxDelegator(new TxManagerClient(txManagerAddr, txManagerPort), new LinkedBlockingQueue<TxManagerEvent>());
 
-        WorkerController workerController = new WorkerController(numThreads, workerThreadExecutor, txDelegator);
+        WorkerController workerController = new WorkerController(numThreads, txDelegator);
         WorkerServer workerServer = new WorkerServer(workerController);
 
         Server server = ServerBuilder.forPort(port)
