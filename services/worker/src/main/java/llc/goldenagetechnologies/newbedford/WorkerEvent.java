@@ -1,6 +1,7 @@
 package llc.goldenagetechnologies.newbedford;
 
 import llc.goldenagetechnologies.newbedford.proto.CandidateRequest;
+import llc.goldenagetechnologies.newbedford.proto.CompoundRateRequest;
 import llc.goldenagetechnologies.newbedford.proto.PriceRequest;
 
 /**
@@ -9,8 +10,11 @@ import llc.goldenagetechnologies.newbedford.proto.PriceRequest;
 public class WorkerEvent {
     public final CandidateRequest candidateRequest;
     public final PriceRequest priceRequest;
-    public WorkerEvent(CandidateRequest candidateRequest, PriceRequest priceRequest) {
+    public final CompoundRateRequest compoundRateRequest;
+
+    public WorkerEvent(CandidateRequest candidateRequest, PriceRequest priceRequest, CompoundRateRequest compoundRateRequest) {
         this.candidateRequest = candidateRequest;
         this.priceRequest = priceRequest;
+        this.compoundRateRequest = compoundRateRequest;
     }
 }
