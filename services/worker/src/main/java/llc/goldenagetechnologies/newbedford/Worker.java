@@ -4,6 +4,8 @@ import llc.goldenagetechnologies.newbedford.compound.GlobalCompoundData;
 import llc.goldenagetechnologies.newbedford.proto.*;
 import llc.goldenagetechnologies.newbedford.threading.TxManagerEvent;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,9 @@ public class Worker {
         this.txDelegatorQueue = queue;
         this.liquidatabilityMap = new HashMap<>();
         this.workerDB = WorkerDB.newBuilder().setCompoundData(GlobalCompoundData.GLOBAL_COMPOUND_DATA).build();
+        this.minPrices = new HashMap<>();
+        this.maxPrices = new HashMap<>();
+        this.exchangeRates = new HashMap<>();
     }
 
     public void updateCandidate(CandidateRequest request) {
@@ -22,9 +27,12 @@ public class Worker {
     }
 
     public void updatePrices(PriceRequest request) {
-        this.maxPrices = request.getMaxPricesList();
-        this.minPrices = request.getMinPricesList();
-
+        // Update local maps whenever new price data is sent
+        request.getMinPricesList().forEach((tokenPrice) -> minPrices.put(tokenPrice.getToken(), tokenPrice));
+        request.getMaxPricesList().forEach((tokenPrice) -> maxPrices.put(tokenPrice.getToken(), tokenPrice));
+        request.getExchangeRatesMap().forEach((key, value) -> {
+            exchangeRates.put(Token.forNumber(key), new BigInteger(value));
+        });
     }
 
     public void updateCompoundRates(CompoundRateRequest request) {
@@ -34,8 +42,9 @@ public class Worker {
     private final BlockingQueue<TxManagerEvent> txDelegatorQueue;
     private WorkerDB workerDB;
 
-    private List<TokenPrice> maxPrices;
-    private List<TokenPrice> minPrices;
+    private Map<Token, TokenPrice> maxPrices;
+    private Map<Token, TokenPrice> minPrices;
+    private Map<Token, BigInteger> exchangeRates;
 
     // To capture rising/falling edge of liquidatability in order to send both liquidateCandidate events and
     // cancelCandidate events
@@ -44,24 +53,37 @@ public class Worker {
     /**
      * What we currently call the "liquidatability" calculation
      *
-     * @param account who to do calculation for
+     * @param candidate who to do calculation for
      * @return shortfall; a positive return value indicates that the account is liquidatable
      */
-    private static long shortfallOf(Candidate candidate) {
+    private long shortfallOf(Candidate candidate) {
         long collat = 0;
         long borrow = 0;
-        /*
-        for (CandidateTokenData tokenData: candidate.getCandidateTokenDataMap().entrySet()) {
-            final long price_USD = cToken.info.priceInUSD();
-            final long supply_USD = account.supplyBalance(cToken) * price_USD;
-            final long borrow_USD = account.borrowBalance(cToken) * price_USD;
 
-            final long collateralFactor = cToken.info.collateralFactor();
-            collat += supply_USD * collateralFactor;
-            borrow += borrow_USD;
+        for (Token token : Token.values()) {
+            // TODO: Change all balances to BigInteger (string in proto)
+            final BigInteger supplyBalance = candidate.getSupplyBalancesMap().get(token.getNumber());
+            final BigInteger borrowBalance = candidate.getBorrowBalancesMap().get(token.getNumber());
+
+            // Use minimum token price if user is supplying, otherwise maximum
+            if (!minPrices.containsKey(token) || !maxPrices.containsKey(token)) {
+                return 0;
+            }
+
+            // Disregard decimals, exchange rate (cToken <-> token) will take care of it
+            final TokenPrice price_USD = (supplyBalance > 0) ? minPrices.get(token) : maxPrices.get(token);
+
+
+            final BigInteger exchangeRate = exchangeRates.get(token);
+
+            final double collateralFactor = workerDB.getCompoundData().getGlobalTokenDataMap().get(token.getNumber()).getCollateralFactor();
+
+            // Fix math forms
+            final BigInteger collatBalanceUSD = supplyBalance * exchangeRate * price_USD * collateralFactor;
+            final long borrowBalanceUSD = borrowBalance * price_USD;
+            collat += collatBalanceUSD;
+            borrow += borrowBalanceUSD;
         }
-        */
-
 
         return borrow - collat;
     }

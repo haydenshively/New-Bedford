@@ -69,7 +69,7 @@ message PriceRequest {
   enum PriceRequestType {
     NO_PRICEREQUEST_TYPE = 0;
     OFFCHAIN_PRICE = 1;
-    PRICES_POSTED_ONCHAIN = 2;
+    PRICES_POSTED_ONCHAIN = 2; // Will also contain new prices for the posted token
   }
 
   PriceRequestType priceRequestType = 1;
@@ -79,7 +79,8 @@ message PriceRequest {
   repeated TokenPrice maxPrices = 3;
   // cToken->Token exchange rate update, send with off-chain prices
   // Decimals are 10 + underlying
-  map<int32, uint64> exchangeRates = 4;
+  // Sent in string because can grow up to 10^28
+  map<int32, string> exchangeRates = 4;
 
   // On-chain price posting
   uint32 timestamp = 5;
@@ -91,7 +92,7 @@ message PriceReply {
 
 // Borrow rate update
 message CompoundRateRequest {
-  map<int32, uint64> borrowRate = 1;
+  map<int32, string> borrowRate = 1;
 }
 
 message CompoundRateReply {
@@ -117,7 +118,7 @@ message CompoundData {
   double liquidationIncentive = 2;
   // The following field uses the numerical equivalent of the Token enum as keys,
   // because enums are not allowed as protobuf map keys
-  map<int32, GlobalTokenData> TokenData = 3;
+  map<int32, GlobalTokenData> globalTokenData = 3;
 }
 
 // Can only be updated with a new Compound governance proposal, or changes to the token's ERC-20 contracts

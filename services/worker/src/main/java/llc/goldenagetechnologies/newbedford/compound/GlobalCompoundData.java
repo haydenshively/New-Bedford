@@ -22,7 +22,7 @@ public class GlobalCompoundData {
         GLOBAL_COMPOUND_DATA = CompoundData.newBuilder()
                 .setCloseFactor(0.5d)
                 .setLiquidationIncentive(1.08)
-                .putAllTokenData(tokenDataMap)
+                .putAllGlobalTokenData(tokenDataMap)
                 .build();
     }
 }
