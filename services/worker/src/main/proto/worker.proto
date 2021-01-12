@@ -55,7 +55,6 @@ message CandidateRequest {
 }
 
 message CandidateReply {
-  // Success signalled by gRPC status code
   enum ReplyType {
     NO_REPLY = 0;
     CLOSING = 1;
@@ -67,18 +66,43 @@ message CandidateReply {
 }
 
 message PriceRequest {
-  repeated TokenPrice prices = 1;
+  enum PriceRequestType {
+    NO_PRICEREQUEST_TYPE = 0;
+    OFFCHAIN_PRICE = 1;
+    PRICES_POSTED_ONCHAIN = 2;
+  }
+
+  PriceRequestType priceRequestType = 1;
+
+  // Price Oracle posting
+  repeated TokenPrice prices = 2;
+  // cToken->Token exchange rate update, send with off-chain prices
+  // Decimals are 10 + underlying
+  map<int32, uint64> exchangeRates = 3;
+
+  // On-chain price posting
+  uint32 timestamp = 4;
 }
 
 message PriceReply {
   // Success signalled by gRPC status code
 }
 
+// Borrow rate update
+message CompoundRateRequest {
+  map<int32, uint64> borrowRate = 1;
+}
+
+message CompoundRateReply {
+  // Success signalled by gRPC status code
+}
+
 service Worker {
   // Keeps the event stream open rather than sending a new request each time
-  // Note: unsure if we should keep both on-chain and off-chain events in the same stream. More investigating needed
   rpc updateCandidate (stream CandidateRequest) returns (stream CandidateReply) {}
   rpc updatePrices (stream PriceRequest) returns (PriceReply) {}
+  rpc updateCompoundRates (stream CompoundRateRequest) returns (CompoundRateReply) {}
+  // TODO: Update global data - collateral factor - from geth
 }
 
 // Data type definitions
@@ -110,10 +134,8 @@ message Candidate {
 
 message CandidateTokenData {
   Token token = 1; // Extra, not strictly needed if an element of candidate's map
-  uint64 supplyBalance = 2;
-  uint64 supplyInterest = 3;
-  uint64 borrowBalance = 4;
-  uint64 borrowInterest = 5;
+  uint64 supplyBalance = 2; // In units of cTokens
+  uint64 borrowBalance = 4; // In units of underlying token
 }
 
 message Event {
@@ -123,7 +145,7 @@ message Event {
     WITHDRAW = 2;
     BORROW = 3;
     REPAY = 4;
-    LIQUIDATED = 5;
+    LIQUIDATION = 5;
   }
 
   EventType eventType = 1;
@@ -136,5 +158,6 @@ message TokenPrice {
   Token token = 1;
   uint64 priceDollars = 2;
   uint32 decimals = 3; // Always 6 for now
-  bytes signature = 4;
+  bytes message = 4;
+  bytes signature = 6;
 }
