@@ -1,23 +1,15 @@
-// test dependenices -----------------------------------------------
-const expect = require('chai').expect;
-import Wallet from '../../src/blocks/Wallet';
-// -----------------------------------------------------------------
-// web3 dependencies -----------------------------------------------
-require('dotenv-safe').config({
-  example: process.env.CI ? '.env.ci.example' : '.env.example',
-});
-
+import { expect } from 'chai';
 const ganache = require('ganache-cli');
 import Web3Utils from 'web3-utils';
 import Web3 from 'web3';
 
+import Big from '../../src/blocks/types/big';
+import Wallet from '../../src/blocks/Wallet';
 import { ProviderFor } from '../../src/blocks/Providers';
-// -----------------------------------------------------------------
-// math dependencies -----------------------------------------------
-import Big from 'big.js';
-Big.DP = 40;
-Big.RM = 0;
-// -----------------------------------------------------------------
+
+require('dotenv-safe').config({
+  example: process.env.CI ? '.env.ci.example' : '.env.example',
+});
 
 describe('Wallet Test', () => {
   let mainnetProvider: Web3;

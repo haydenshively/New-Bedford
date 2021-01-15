@@ -1,14 +1,11 @@
-import Big from 'big.js';
 import Common from '@ethereumjs/common';
 import { Transaction as EthJSTx, TxOptions as EthJSTxOpts } from '@ethereumjs/tx';
 import { PromiEvent, TransactionReceipt as ITxReceipt } from 'web3-core';
 import Web3Utils from 'web3-utils';
 import Web3 from 'web3';
 
+import Big from './types/big';
 import ITx from './types/ITx';
-
-Big.DP = 40;
-Big.RM = 0;
 
 interface ITxHex {
   nonce: string;

@@ -1,13 +1,12 @@
-import Big from 'big.js';
-import Web3EthAbi from 'web3-eth-abi';
-import { Contract as Web3Contract, ContractSendMethod as Web3Method } from 'web3-eth-contract';
+import { Contract as IWeb3Contract, ContractSendMethod as Web3Method } from 'web3-eth-contract';
 import Web3Utils from 'web3-utils';
 import Web3 from 'web3';
 
+import Big from './types/big';
 import ITx from './types/ITx';
 
-Big.DP = 40;
-Big.RM = 0;
+const AbiCoder = require('web3-eth-abi');
+const Web3Contract = require('web3-eth-contract');
 
 type IWeb3Response = { [key: string]: any };
 
@@ -16,18 +15,17 @@ type IWeb3Response = { [key: string]: any };
  * to make blockchain calls and sends convenient. This class extricates the notion
  * of a Provider from that of a Contract, allowing contracts to be instantiated
  * at any point in the code -- no need to first setup a web3 provider.
- * 
+ *
  * That said, the ordinary `web3.eth.Contract(...)` should be used when subscribing
  * to events and/or retrieving past events because the API is clear and will notify
  * listeners if an on-chain event was rolled back by a chain fork.
  */
 export default abstract class Contract {
-  static readonly abiCoder = new Web3EthAbi.AbiCoder();
-
   public readonly address: string;
 
-  private readonly abi: Web3Utils.AbiItem[];
-  protected readonly inner: Web3Contract;
+  protected readonly abi: Web3Utils.AbiItem[];
+
+  protected readonly inner: IWeb3Contract;
 
   /**
    * Constructs a new Contract instance
@@ -68,23 +66,30 @@ export default abstract class Contract {
         },
         block,
       );
-      return modifier(Contract.abiCoder.decodeParameters(outputTypes, x));
+      return modifier(AbiCoder.decodeParameters(outputTypes, x));
     };
   }
 
   /**
    * Returns a sendable transaction object that will call `method`
-   * 
+   *
    * @param method the Solidity method that you want to run on-chain
    * @param gasLimit maximum gas to spend running the method
    * @param gasPrice Wei to spend per gas unit
    */
   protected txFor(method: Web3Method, gasLimit = Big('0'), gasPrice = Big('0')): ITx {
     return {
-      gasPrice: gasPrice,
-      gasLimit: gasLimit,
+      gasPrice,
+      gasLimit,
       to: this.address,
       data: method.encodeABI(),
+    };
+  }
+
+  protected storageAt(slot: string, modifier = (x: string): any => x) {
+    return async (provider: Web3, block = 'latest') => {
+      const x = await provider.eth.getStorageAt(this.address, slot, block);
+      return modifier(x);
     };
   }
 }

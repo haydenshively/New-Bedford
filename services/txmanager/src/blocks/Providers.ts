@@ -1,5 +1,5 @@
 import net from 'net';
-import { chain, WebsocketProvider, IpcProvider } from 'web3-core';
+import { chain } from 'web3-core';
 import { Eth } from 'web3-eth';
 import Web3 from 'web3';
 

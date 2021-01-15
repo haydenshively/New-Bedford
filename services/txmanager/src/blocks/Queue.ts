@@ -1,11 +1,9 @@
-import Big from 'big.js';
 import { PromiEvent, TransactionReceipt as ITxReceipt } from 'web3-core';
 
+import Big from './types/big';
 import ITx from './types/ITx';
 import Wallet from './Wallet';
 
-Big.DP = 40;
-Big.RM = 0;
 const winston = require('winston');
 
 export default class TxQueue {
@@ -186,10 +184,7 @@ export default class TxQueue {
     this.setupTxEvents(sentTx, callback);
   }
 
-  private setupTxEvents(
-    sentTx: PromiEvent<ITxReceipt>,
-    callback: (receipt: ITxReceipt | null) => void,
-  ) {
+  private setupTxEvents(sentTx: PromiEvent<ITxReceipt>, callback: (receipt: ITxReceipt | null) => void) {
     const label = `💸 *Transaction* ${this.wallet.label} `;
 
     // After receiving the transaction hash, log send
