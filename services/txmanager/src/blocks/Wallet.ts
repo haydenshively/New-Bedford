@@ -6,6 +6,8 @@ import Web3 from 'web3';
 
 import Big from './types/big';
 import ITx from './types/ITx';
+import IProviderGroup from './types/IProviderGroup';
+import ProviderGroup from './ProviderGroup';
 
 interface ITxHex {
   nonce: string;
@@ -17,7 +19,7 @@ interface ITxHex {
 }
 
 export default class Wallet {
-  private provider: Web3;
+  private provider: IProviderGroup;
 
   private readonly envKeyAddress: string;
 
@@ -30,12 +32,12 @@ export default class Wallet {
   /**
    * Constructs a new Wallet instance
    *
-   * @param provider the Web3 provider to use for transactions
+   * @param provider the provider(s) to use for transactions
    * @param envKeyAddress name of env variable containing the address
    * @param envKeySecret name of env variable containing private key
    */
-  constructor(provider: Web3, envKeyAddress: string, envKeySecret: string) {
-    this.provider = provider;
+  constructor(provider: IProviderGroup | Web3, envKeyAddress: string, envKeySecret: string) {
+    this.provider = provider instanceof Web3 ? new ProviderGroup(provider) : provider;
     this.envKeyAddress = envKeyAddress;
     this.envKeySecret = envKeySecret;
 

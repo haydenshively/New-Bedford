@@ -1,4 +1,4 @@
-export default interface IProviderSpec {
+export default interface IConnectionSpec {
   type: string;
   envKeyPath?: string;
   envKeyID?: string;

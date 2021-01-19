@@ -5,7 +5,7 @@ import Web3 from 'web3';
 
 import Big from '../../src/blocks/types/big';
 import Wallet from '../../src/blocks/Wallet';
-import { ProviderFor } from '../../src/blocks/Providers';
+import { providerFor } from '../../src/blocks/Providers';
 
 require('dotenv-safe').config({
   example: process.env.CI ? '.env.ci.example' : '.env.example',
@@ -17,7 +17,7 @@ describe('Wallet Test', () => {
   let wallet: Wallet;
 
   before(() => {
-    mainnetProvider = ProviderFor('mainnet', {
+    mainnetProvider = providerFor('mainnet', {
       type: 'WS_Infura',
       envKeyID: 'PROVIDER_INFURA_ID',
     });

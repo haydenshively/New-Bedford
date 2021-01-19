@@ -4,7 +4,7 @@ import Web3Utils from 'web3-utils';
 import Web3 from 'web3';
 
 import Big from '../src/blocks/types/big';
-import { ProviderFor } from '../src/blocks/Providers';
+import { providerFor } from '../src/blocks/Providers';
 import treasury from '../src/contracts/Treasury';
 
 require('dotenv-safe').config({
@@ -17,7 +17,7 @@ describe('Treasury Test', () => {
   let caller: string;
 
   before(() => {
-    mainnetProvider = ProviderFor('mainnet', {
+    mainnetProvider = providerFor('mainnet', {
       type: 'WS_Infura',
       envKeyID: 'PROVIDER_INFURA_ID',
     });
