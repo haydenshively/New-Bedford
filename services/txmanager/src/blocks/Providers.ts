@@ -1,5 +1,5 @@
 import net from 'net';
-import { chain } from 'web3-core';
+import { chain, PromiEvent, TransactionReceipt } from 'web3-core';
 import { Eth } from 'web3-eth';
 import Web3 from 'web3';
 
@@ -67,7 +67,7 @@ const ProvidersFor = (chain: chain, specs: IProviderSpec[]): Web3[] => {
 };
 
 export class MultiSendProvider {
-  private providers: Web3[];
+  private readonly providers: Web3[];
 
   constructor(chain: chain, specs: IProviderSpec[]) {
     this.providers = ProvidersFor(chain, specs);
@@ -75,28 +75,40 @@ export class MultiSendProvider {
     // Use proxy to match ordinary Web3 API
     return new Proxy(this, {
       get(target, prop, receiver) {
+        // Recursively enter this Proxy getter
         if (prop === 'eth') return receiver;
+        // If eth.someFunction exists in MultiSendProvider, prefer that
+        // to the underlying implementation. This means that all MultiSendProvider
+        // functions override eth functions of the same name.
         if (prop in target) return target[prop as keyof MultiSendProvider];
-        // fallback
+        // If no override exists, call the underlying implementation on 1st provider
         return target.providers[0].eth[prop as keyof Eth];
       },
     });
   }
 
-  call(tx: object, block: number) {
+  public call(tx: object, block: number) {
     return this.providers[0].eth.call(tx, block);
   }
 
-  sendSignedTransaction(signedTx: string) {
-    const sentTx = this.providers[0].eth.sendSignedTransaction(signedTx);
-    for (let i = 1; i < this.providers.length; i += 1)
-      this.providers[i].eth
-        .sendSignedTransaction(signedTx)
-        .on('error', (e: Error) => console.log(`${e.name} ${e.message}`));
-    return sentTx;
+  public sendSignedTransactionEverywhere(signedTx: string): PromiEvent<TransactionReceipt>[] {
+    return this.providers.map((provider) => provider.eth.sendSignedTransaction(signedTx));
   }
 
-  clearSubscriptions(callback: (error: Error | undefined, result: boolean) => void): void {
+  public sendSignedTransaction(signedTx: string, mainProviderIdx = 0, useAllProviders = true): PromiEvent<TransactionReceipt> {
+    if (useAllProviders) {
+      const sentTxs = this.sendSignedTransactionEverywhere(signedTx);
+      for (let i = 0; i < sentTxs.length; i += 1) {
+        if (i === mainProviderIdx) continue;
+        sentTxs[i].on('error', (e: Error) => console.log(`${e.name} ${e.message}`));
+      }
+      return sentTxs[mainProviderIdx];
+    }
+
+    return this.providers[mainProviderIdx].eth.sendSignedTransaction(signedTx);
+  }
+
+  public clearSubscriptions(callback: (error: Error | undefined, result: boolean) => void): void {
     const promises = this.providers.map(
       (p) =>
         new Promise((resolve, reject) =>
@@ -113,8 +125,8 @@ export class MultiSendProvider {
     );
   }
 
-  // Double-underscore because this isn't part of the web3.eth namespace
-  __close(): void {
+  // This isn't part of the web3.eth namespace
+  private close(): void {
     this.providers.forEach((p) => {
       if (p.currentProvider === null) return;
       if (
@@ -126,12 +138,12 @@ export class MultiSendProvider {
           p.currentProvider.connection.close();
         } catch {
           // @ts-ignore: We already checked that type is valid
-          p.currentProvider.connection.destory();
+          p.currentProvider.connection.destroy();
         }
     });
   }
 
-  get currentProvider() {
-    return { connection: { close: this.__close.bind(this) } };
+  public get currentProvider() {
+    return { connection: { close: this.close.bind(this) } };
   }
 }

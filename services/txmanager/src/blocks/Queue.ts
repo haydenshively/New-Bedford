@@ -1,4 +1,5 @@
 import { PromiEvent, TransactionReceipt as ITxReceipt } from 'web3-core';
+import { QueueSafePromiEvent } from './QueueSafePromiEvent';
 
 import Big from './types/big';
 import ITx from './types/ITx';
@@ -109,9 +110,9 @@ export default class TxQueue {
    * };
    * txQueue.append(tx);
    */
-  public append(tx: ITx, callback: (receipt: ITxReceipt | null) => void = () => {}): void {
+  public append(tx: ITx, callback: (receipt: ITxReceipt | null) => void = () => {}): PromiEvent<ITxReceipt> {
     const idx = this.queue.push(tx) - 1;
-    this.broadcast(idx, callback);
+    return this.broadcast(idx, callback);
   }
 
   /**
@@ -143,7 +144,7 @@ export default class TxQueue {
     gasPriceMode: 'as_is' | 'clip' | 'min',
     maxGasPrice: Big | null = null,
     callback: (receipt: ITxReceipt | null) => void = () => {},
-  ): void {
+  ): PromiEvent<ITxReceipt> {
     switch (gasPriceMode) {
       case 'as_is':
         break;
@@ -160,7 +161,7 @@ export default class TxQueue {
     }
 
     this.queue[idx] = tx;
-    this.broadcast(idx, callback);
+    return this.broadcast(idx, callback);
   }
 
   /**
@@ -170,25 +171,24 @@ export default class TxQueue {
    * @param idx a queue index
    * @param callback yields receipt when available, or null if off-chain error
    */
-  public dump(idx: number, callback: (receipt: ITxReceipt | null) => void = () => {}): void {
+  public dump(idx: number, callback: (receipt: ITxReceipt | null) => void = () => {}): PromiEvent<ITxReceipt> {
     this.queue[idx] = this.wallet.emptyTx;
     this.queue[idx].gasPrice = this.wallet.minGasPriceFor(this.nonce(idx));
-    this.broadcast(idx, callback);
+    return this.broadcast(idx, callback);
   }
 
-  private broadcast(idx: number, callback: (receipt: ITxReceipt | null) => void) {
+  private broadcast(idx: number, callback: (receipt: ITxReceipt | null) => void): PromiEvent<ITxReceipt> {
     const tx = this.queue[idx];
     const nonce = this.nonce(idx);
     const sentTx = this.wallet.signAndSend(tx, nonce);
 
-    this.setupTxEvents(sentTx, callback);
+    return this.setupTxEvents(sentTx, callback);
   }
 
-  private setupTxEvents(sentTx: PromiEvent<ITxReceipt>, callback: (receipt: ITxReceipt | null) => void) {
-    const label = `💸 *Transaction* ${this.wallet.label} `;
-
-    // After receiving the transaction hash, log send
-    sentTx.on('transactionHash', (hash) => winston.info(`${label} sent ${hash.slice(0, 6)}`));
+  private setupTxEvents(
+    sentTx: PromiEvent<ITxReceipt>,
+    callback: (receipt: ITxReceipt | null) => void,
+  ): PromiEvent<ITxReceipt> {
     // After receiving receipt, log success and rebase
     sentTx.on('receipt', (receipt) => {
       // @ts-ignore: I know the removeAllListeners function works
@@ -210,12 +210,16 @@ export default class TxQueue {
         callback(null);
       }
     });
+
+    // Return a version of the PromiEvent in which the 'receipt' and 'error'
+    // listeners can't be overwritten
+    return QueueSafePromiEvent(sentTx);
   }
 
   private onTxReceipt(receipt: ITxReceipt): void {
     this.rebase();
     // Logging
-    const label = `${this.wallet.label}:${receipt.transactionHash.slice(0, 6)}`;
+    const label = `💸 *Transaction* ${this.wallet.label}:${receipt.transactionHash.slice(0, 6)} was `;
     const linkText = receipt.status ? 'successful!' : 'reverted';
     winston.info(`${label}was <https://etherscan.io/tx/${receipt.transactionHash}|${linkText}>`);
   }
