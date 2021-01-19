@@ -138,7 +138,11 @@ export default class LatencyWatchBase {
     return Math.ceil(diff / N);
   }
 
-  public storeHash(hash: string): void {
+  public storeHash(hash: string, sentAtTimestamp?: Date): void {
+    if (sentAtTimestamp !== undefined) {
+      this.txnTests[hash] = sentAtTimestamp;
+      return;
+    }
     this.blockCurr.pending[hash] = new Date();
   }
 

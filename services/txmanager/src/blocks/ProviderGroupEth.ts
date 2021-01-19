@@ -31,9 +31,9 @@ export default class ProviderGroupEth implements IProviderGroupEth {
   public dispatchSignedTransaction(
     signedTx: string,
     mainConnectionIdx = 0,
-    useAllProviders = true,
+    useAllConnections = true,
   ): PromiEvent<ITxReceipt> {
-    if (useAllProviders) {
+    if (useAllConnections) {
       const sentTxs = this.providers.map((provider) => provider.eth.sendSignedTransaction(signedTx));
 
       for (let i = 0; i < sentTxs.length; i += 1) {

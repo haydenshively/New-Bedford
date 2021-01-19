@@ -120,6 +120,9 @@ export default class Wallet {
    *
    * @param tx an object describing the transaction
    * @param nonce the transaction's nonce, as an integer (base 10)
+   * @param mainConnectionIdx index of the connection for which a PromiEvent should be returned. Indices are
+   *    based on order of construction args
+   * @param useAllConnections whether to send via all connections, or just the main one
    * @returns See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
    *
    * @example
@@ -133,9 +136,9 @@ export default class Wallet {
    * };
    * const sentTx = wallet.signAndSend(tx, 0);
    */
-  public signAndSend(tx: ITx, nonce: number): PromiEvent<ITxReceipt> {
+  public signAndSend(tx: ITx, nonce: number, mainConnectionIdx = 0, useAllConnections = true): PromiEvent<ITxReceipt> {
     if ('gasPrice' in tx) this.gasPrices[nonce] = tx.gasPrice;
-    return this.send(this.sign(Wallet.parse(tx, nonce)));
+    return this.send(this.sign(Wallet.parse(tx, nonce)), mainConnectionIdx, useAllConnections);
   }
 
   /**
@@ -166,10 +169,13 @@ export default class Wallet {
    * Sends a signed transaction
    *
    * @param signedTx a transaction that's been signed by this wallet
+   * @param mainConnectionIdx index of the connection for which a PromiEvent should be returned. Indices are
+   *    based on order of construction args
+   * @param useAllConnections whether to send via all connections, or just the main one
    * @returns See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
    */
-  private send(signedTx: string): PromiEvent<ITxReceipt> {
-    return this.provider.eth.sendSignedTransaction(signedTx);
+  private send(signedTx: string, mainConnectionIdx = 0, useAllConnections = true): PromiEvent<ITxReceipt> {
+    return this.provider.eth.dispatchSignedTransaction(signedTx, mainConnectionIdx, useAllConnections);
   }
 
   /**

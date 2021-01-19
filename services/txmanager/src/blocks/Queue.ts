@@ -98,6 +98,9 @@ export default class TxQueue {
    *
    * @param tx an object describing the transaction
    * @param callback yields receipt when available, or null if off-chain error
+   * @param mainConnectionIdx index of the connection for which a PromiEvent should be returned. Indices are
+   *    based on order of construction args
+   * @param useAllConnections whether to send via all connections, or just the main one
    *
    * @example
    * // Send the following tx
@@ -110,9 +113,14 @@ export default class TxQueue {
    * };
    * txQueue.append(tx);
    */
-  public append(tx: ITx, callback: (receipt: ITxReceipt | null) => void = () => {}): PromiEvent<ITxReceipt> {
+  public append(
+    tx: ITx,
+    callback: (receipt: ITxReceipt | null) => void = () => {},
+    mainConnectionIdx = 0,
+    useAllConnections = true,
+  ): PromiEvent<ITxReceipt> {
     const idx = this.queue.push(tx) - 1;
-    return this.broadcast(idx, callback);
+    return this.broadcast(idx, callback, mainConnectionIdx, useAllConnections);
   }
 
   /**
@@ -127,6 +135,9 @@ export default class TxQueue {
    * @param maxGasPrice default null; if specified, the "clip"
    *    mode will enforce this maxGasPrice as well as the min
    * @param callback yields receipt when available, or null if off-chain error
+   * @param mainConnectionIdx index of the connection for which a PromiEvent should be returned. Indices are
+   *    based on order of construction args
+   * @param useAllConnections whether to send via all connections, or just the main one
    *
    * @example
    * // Replace the proximal tx with the following
@@ -144,6 +155,8 @@ export default class TxQueue {
     gasPriceMode: 'as_is' | 'clip' | 'min',
     maxGasPrice: Big | null = null,
     callback: (receipt: ITxReceipt | null) => void = () => {},
+    mainConnectionIdx = 0,
+    useAllConnections = true,
   ): PromiEvent<ITxReceipt> {
     switch (gasPriceMode) {
       case 'as_is':
@@ -161,7 +174,7 @@ export default class TxQueue {
     }
 
     this.queue[idx] = tx;
-    return this.broadcast(idx, callback);
+    return this.broadcast(idx, callback, mainConnectionIdx, useAllConnections);
   }
 
   /**
@@ -170,17 +183,30 @@ export default class TxQueue {
    *
    * @param idx a queue index
    * @param callback yields receipt when available, or null if off-chain error
+   * @param mainConnectionIdx index of the connection for which a PromiEvent should be returned. Indices are
+   *    based on order of construction args
+   * @param useAllConnections whether to send via all connections, or just the main one
    */
-  public dump(idx: number, callback: (receipt: ITxReceipt | null) => void = () => {}): PromiEvent<ITxReceipt> {
+  public dump(
+    idx: number,
+    callback: (receipt: ITxReceipt | null) => void = () => {},
+    mainConnectionIdx = 0,
+    useAllConnections = true,
+  ): PromiEvent<ITxReceipt> {
     this.queue[idx] = this.wallet.emptyTx;
     this.queue[idx].gasPrice = this.wallet.minGasPriceFor(this.nonce(idx));
-    return this.broadcast(idx, callback);
+    return this.broadcast(idx, callback, mainConnectionIdx, useAllConnections);
   }
 
-  private broadcast(idx: number, callback: (receipt: ITxReceipt | null) => void): PromiEvent<ITxReceipt> {
+  private broadcast(
+    idx: number,
+    callback: (receipt: ITxReceipt | null) => void,
+    mainConnectionIdx = 0,
+    useAllConnections = true,
+  ): PromiEvent<ITxReceipt> {
     const tx = this.queue[idx];
     const nonce = this.nonce(idx);
-    const sentTx = this.wallet.signAndSend(tx, nonce);
+    const sentTx = this.wallet.signAndSend(tx, nonce, mainConnectionIdx, useAllConnections);
 
     return this.setupTxEvents(sentTx, callback);
   }

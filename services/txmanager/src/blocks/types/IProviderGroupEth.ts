@@ -33,12 +33,12 @@ export default interface IProviderGroupEth extends IEthPartial {
    * @param signedTx the encoded transaction data to send
    * @param mainConnectionIdx index of the connection for which a PromiEvent
    *    should be returned. Indices are based on order of construction args
-   * @param useAllProviders whether to send via all connections, or just the
+   * @param useAllConnections whether to send via all connections, or just the
    *    main one
    */
   dispatchSignedTransaction(
     signedTx: string,
     mainConnectionIdx?: number,
-    useAllProviders?: boolean,
+    useAllConnections?: boolean,
   ): PromiEvent<ITxReceipt>;
 }
