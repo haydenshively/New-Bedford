@@ -3,8 +3,7 @@ const ganache = require('ganache-cli');
 import Web3Utils from 'web3-utils';
 import Web3 from 'web3';
 
-import Big from '../../src/blocks/types/big';
-import { providerFor } from '../../src/blocks/Providers';
+import { providerFor, Big } from '@goldenagellc/web3-blocks';
 import treasury from '../../src/contracts/Treasury';
 
 require('dotenv-safe').config({

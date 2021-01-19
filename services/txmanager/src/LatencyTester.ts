@@ -1,8 +1,7 @@
 import { TransactionReceipt as ITxReceipt } from 'web3-core';
 
-import ITx from './blocks/types/ITx';
+import { ITx, TxQueue } from '@goldenagellc/web3-blocks';
 import LatencyInterpreter from './LatencyInterpreter';
-import TxQueue from './blocks/Queue';
 
 export default class LatencyTester {
   public readonly interpreter: LatencyInterpreter;

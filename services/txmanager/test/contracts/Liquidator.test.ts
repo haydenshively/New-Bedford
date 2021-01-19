@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import ITx from '../../src/blocks/types/ITx';
+import { ITx } from '@goldenagellc/web3-blocks';
 import liquidator from '../../src/contracts/Liquidator';
 
 describe('Liquidator Test', () => {

@@ -1,7 +1,6 @@
 import Web3Utils from 'web3-utils';
 
-import Big from '../blocks/types/big';
-import Contract from '../blocks/Contract';
+import { Big, Contract } from '@goldenagellc/web3-blocks';
 
 import abi from './abis/treasury.json';
 

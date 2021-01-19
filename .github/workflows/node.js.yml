@@ -29,10 +29,10 @@ env:
   PGPORT: ${{ secrets.PGPORT }}
   PGUSER: ${{ secrets.PGUSER }}
   SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  NPM_GH_AUTH_TOKEN: ${{ secrets.NPM_GH_AUTH_TOKEN }}
 
 jobs:
   test-ethereum:
-
     runs-on: ubuntu-20.04
     defaults:
       run:
@@ -57,7 +57,6 @@ jobs:
     - run: yarn test-known-block
 
   test-services-txmanager:
-
     runs-on: ubuntu-20.04
     defaults:
       run:
@@ -77,6 +76,13 @@ jobs:
         echo "PROVIDER_INFURA_ID"=$PROVIDER_INFURA_ID >> .env
         echo "ACCOUNT_ADDRESS_TEST"=$ACCOUNT_ADDRESS_TEST >> .env
         echo "ACCOUNT_SECRET_TEST"=$ACCOUNT_SECRET_TEST >> .env
+
+    - name: Create .npmrc file
+      run: |
+        touch .npmrc
+        echo "registry=https://registry.npmjs.org/" >> .npmrc
+        echo "@goldenagellc:registry=https://npm.pkg.github.com/" >> .npmrc
+        echo "//npm.pkg.github.com/:_authToken=$NPM_GH_AUTH_TOKEN" >> .npmrc
     
     - run: yarn install
     - run: yarn test

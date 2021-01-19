@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import Web3 from 'web3';
 import { BlockHeader } from 'web3-eth';
 
-import { providerFor } from '../src/blocks/Providers';
+import { providerFor } from '@goldenagellc/web3-blocks';
 import EthSubscriber from '../src/EthSubscriber';
 import IEthSubscriptionConsumer from '../src/types/IEthSubscriptionConsumer';
 
