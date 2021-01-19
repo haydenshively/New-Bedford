@@ -24,21 +24,21 @@ interface ITimedBlock {
 }
 
 export default class LatencyWatchBase {
-  private maxArrLength: number;
+  private readonly maxArrLength: number;
 
-  private blockTimes: number[];
+  private readonly blockTimes: number[];
 
-  private blockLatencies: number[];
+  private readonly blockLatencies: number[];
 
-  private approxCollationDurations: number[];
+  private readonly approxCollationDurations: number[];
 
-  private txnLatencies: number[];
+  private readonly txnLatencies: number[];
 
-  protected blockCurr: ITimedBlock;
+  private blockCurr: ITimedBlock;
 
-  protected blockPrev: ITimedBlock;
+  private blockPrev: ITimedBlock;
 
-  protected txnTests: { [key: string]: Date };
+  private txnTests: { [key: string]: Date };
 
   constructor(maxArrLength = 100) {
     this.maxArrLength = maxArrLength;
@@ -54,6 +54,16 @@ export default class LatencyWatchBase {
     this.txnLatencies = [100.5, 98, 117.5, 126];
 
     this.txnTests = {};
+  }
+
+  public get summaryText(): string {
+    return `Block Time: ${Number(this.meanBlockTime) / 1000}\nBlock Latency: ${
+      Number(this.meanBlockLatency) / 1000
+    }\nCollation Duration: ${Number(this.meanApproxCollationDuration) / 1000}`;
+  }
+
+  public get blockNumber(): number {
+    return Number(this.blockPrev.number);
   }
 
   public get meanBlockTime(): number | null {
@@ -128,7 +138,23 @@ export default class LatencyWatchBase {
     return Math.ceil(diff / N);
   }
 
-  protected analyze(block: BlockTransactionString): void {
+  public storeHash(hash: string): void {
+    this.blockCurr.pending[hash] = new Date();
+  }
+
+  public storeBlock(block: BlockTransactionString): void {
+    // Save block's identity
+    this.blockCurr.number = block.number;
+    this.blockCurr.hash = block.hash;
+
+    // Save block's temporal data
+    const t_collation = new Date(0);
+    t_collation.setUTCSeconds(Number(block.timestamp));
+    this.blockCurr.tCollation = t_collation;
+    this.blockCurr.tReception = new Date();
+  }
+
+  public analyze(block: BlockTransactionString): void {
     if (this.blockPrev.tReception !== undefined) {
       // Number() and getTime() are equivalent, but using Number gets around TS complaints
       // about "possibly undefined"
@@ -163,7 +189,7 @@ export default class LatencyWatchBase {
     if (durations.length > 0) this.approxCollationDurations.push(Math.max(...durations));
   }
 
-  protected step(): void {
+  public step(): void {
     this.blockPrev = { ...this.blockCurr };
     this.blockPrev.pending = {}; // Don't care about pending on previous block, just here for typing
     this.blockCurr = { pending: {} };
