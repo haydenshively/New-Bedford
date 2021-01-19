@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import ITx from '../src/blocks/types/ITx';
-import liquidator from '../src/Liquidator';
+import liquidator from '../src/contracts/Liquidator';
 
 describe('Liquidator Test', () => {
   const pricesArr = [

@@ -5,7 +5,7 @@ import Web3 from 'web3';
 
 import Big from '../src/blocks/types/big';
 import { ProviderFor } from '../src/blocks/Providers';
-import treasury from '../src/Treasury';
+import treasury from '../src/contracts/Treasury';
 
 require('dotenv-safe').config({
   example: process.env.CI ? '.env.ci.example' : '.env.example',
