@@ -1,34 +1,166 @@
 syntax = "proto3";
 
+option java_multiple_files = true;
+option java_package = "llc.goldenagetechnologies.newbedford.proto";
+option java_outer_classname = "WorkerProto";
+
 package new_bedford;
 
-message EventRequest {
-  repeated Event events = 1;
+// Global enums
+enum Token {
+  NO_TOKEN = 0;
+  // ETH = 1;
+  cETH = 2;
+  // WBTC = 3;
+  cWBTC = 4;
+  // DAI = 5;
+  cDAI = 6;
+  // USDC = 7;
+  cUSDC = 8;
+  // USDT = 9;
+  cUSDT = 10;
+  // UNI = 11;
+  cUNI = 12;
+  // ZRX = 13;
+  cZRX = 14;
+  // COMP = 15;
+  cCOMP = 16;
+  // BAT = 17;
+  cBAT = 18;
+  // SAI = 19;
+  cSAI = 20;
+  // REP = 21;
+  cREP = 22;
 }
 
-message EventReply {
+enum TokenType {
+  NO_TYPE = 0;
+  V1 = 1;
+  V2 = 2;
+}
+
+// Request and response types
+message CandidateRequest {
+  enum RequestType {
+    NO_REQUEST = 0;
+    BOOTSTRAP_CANDIDATE = 1; // Also interprets candidate events, post-bootstrap data
+    CANDIDATE_EVENT = 2;
+  }
+
+  RequestType requestType = 1;
+
+  // Both of these fields are optional, and will be filled depending on the request type
+  repeated Event events = 2;
+  repeated Candidate candidates = 3;
+}
+
+message CandidateReply {
+  enum ReplyType {
+    NO_REPLY = 0;
+    CLOSING = 1;
+    REQUEST_BOOTSTRAP = 2;
+  }
+
+  ReplyType replyType = 1;
+  string address = 2; // If requesting a bootstrap
+}
+
+message PriceRequest {
+  enum PriceRequestType {
+    NO_PRICEREQUEST_TYPE = 0;
+    OFFCHAIN_PRICE = 1;
+    PRICES_POSTED_ONCHAIN = 2;
+  }
+
+  PriceRequestType priceRequestType = 1;
+
+  // Price Oracle posting
+  repeated TokenPrice minPrices = 2;
+  repeated TokenPrice maxPrices = 3;
+  // cToken->Token exchange rate update, send with off-chain prices
+  // Decimals are 10 + underlying
+  map<int32, uint64> exchangeRates = 4;
+
+  // On-chain price posting
+  uint32 timestamp = 5;
+}
+
+message PriceReply {
   // Success signalled by gRPC status code
 }
 
-message Event {
-  enum EventType {
-    NO_EVENT = 0;
-  }
-
-  EventType eventType = 1;
+// Borrow rate update
+message CompoundRateRequest {
+  map<int32, uint64> borrowRate = 1;
 }
 
-message StartRequest {
-  bytes databaseAccurateToBlock = 1;
-}
-
-message StartReply {
+message CompoundRateReply {
   // Success signalled by gRPC status code
 }
 
 service Worker {
   // Keeps the event stream open rather than sending a new request each time
-  // Note: unsure if we should keep both on-chain and off-chain events in the same stream. More investigating needed
-  rpc receiveEvent (stream EventRequest) returns (EventReply) {}
-  rpc start (StartRequest) returns (StartReply) {}
+  rpc updateCandidate (stream CandidateRequest) returns (stream CandidateReply) {}
+  rpc updatePrices (stream PriceRequest) returns (PriceReply) {}
+  rpc updateCompoundRates (stream CompoundRateRequest) returns (CompoundRateReply) {}
+  // TODO: Update global data - collateral factor - from geth
+}
+
+// Data type definitions
+message WorkerDB {
+  CompoundData compoundData = 1;
+  map<int32, Candidate> candidates = 2;
+}
+
+message CompoundData {
+  double closeFactor = 1;
+  double liquidationIncentive = 2;
+  // The following field uses the numerical equivalent of the Token enum as keys,
+  // because enums are not allowed as protobuf map keys
+  map<int32, GlobalTokenData> TokenData = 3;
+}
+
+// Can only be updated with a new Compound governance proposal, or changes to the token's ERC-20 contracts
+message GlobalTokenData {
+  double collateralFactor = 2;
+  TokenType tokenType = 3;
+  int32 underlyingDecimals = 4;
+  string cTokenAddress = 5;
+
+  // TODO: Merge between token and cToken data
+}
+
+message Candidate {
+  string address = 1;
+  // Maps from Token (enum int) to amount
+  // (varying decimals, supply is always 18 (cTokens), borrow is underlying decimals)
+  map<int32, uint64> supplyBalances = 2;
+  map<int32, uint64> borrowBalances = 3;
+}
+
+message Event {
+  enum EventType {
+    NO_EVENT = 0;
+    MINT = 1;
+    REDEEM = 2;
+    BORROW = 3;
+    REPAY_BORROW = 4;
+    LIQUIDATE_BORROW = 5;
+    TRANSFER = 6;
+  }
+
+  EventType eventType = 1;
+  Token token = 2;
+
+  int32 candidateAddress = 3; // from address, in the event of a transfer
+  uint64 amount = 4;
+  int32 transferTo = 5;
+}
+
+message TokenPrice {
+  Token token = 1;
+  uint64 priceDollars = 2;
+  uint32 decimals = 3; // Always 6 for now
+  string message = 4;
+  string signature = 6;
 }
