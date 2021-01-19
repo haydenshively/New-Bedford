@@ -1,6 +1,6 @@
 # New Bedford
 
-![Node.js CI](https://github.com/haydenshively/nantucket/workflows/Node.js%20CI/badge.svg)
+![Node.js CI](https://github.com/haydenshively/new-bedford/workflows/Node.js%20CI/badge.svg)
 
 ## Introduction
 
