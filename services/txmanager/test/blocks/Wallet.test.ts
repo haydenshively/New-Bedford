@@ -39,8 +39,10 @@ describe('Wallet Test', () => {
   });
 
   after(() => {
-    ganacheProvider.eth.clearSubscriptions(() => {});
-    mainnetProvider.eth.clearSubscriptions(() => {});
+    // @ts-expect-error
+    ganacheProvider.eth.clearSubscriptions();
+    // @ts-expect-error
+    mainnetProvider.eth.clearSubscriptions();
     if (
       mainnetProvider.currentProvider !== null &&
       (mainnetProvider.currentProvider.constructor.name === 'WebsocketProvider' ||
@@ -59,7 +61,7 @@ describe('Wallet Test', () => {
     const nonce = await wallet.getLowestLiquidNonce();
     expect(typeof nonce).to.equal('number');
     expect(Number.isInteger(nonce)).to.be.true;
-  });
+  }).timeout(4000);
 
   it('should sign transactions', () => {
     const tx = {
@@ -91,7 +93,7 @@ describe('Wallet Test', () => {
     expect(receipt.to).to.equal(wallet.address.toLowerCase());
     expect(receipt.to).to.equal(receipt.from);
     expect(receipt.gasUsed).to.equal(21000);
-  });
+  }).timeout(4000);
 
   it('should estimate gas', async () => {
     const nonce = await wallet.getLowestLiquidNonce();
@@ -100,5 +102,5 @@ describe('Wallet Test', () => {
 
     const gas = await wallet.estimateGas(tx, nonce);
     expect(gas).to.equal(21000);
-  });
+  }).timeout(4000);
 });

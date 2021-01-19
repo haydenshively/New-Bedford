@@ -18,9 +18,8 @@ export default interface IProviderGroupEth extends IEthPartial {
   // MARK: Required overrides ----------------------------------
   /**
    * Clears subscriptions on *all* connections in the group
-   * @param callback block to run upon completion
    */
-  clearSubscriptions(callback: (error: Error, result: boolean) => void): void;
+  clearSubscriptions(): void;
 
   // MARK: Additional functionality ----------------------------
   /**

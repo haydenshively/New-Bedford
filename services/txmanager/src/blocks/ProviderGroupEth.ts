@@ -11,21 +11,9 @@ export default class ProviderGroupEth implements IProviderGroupEth {
     this.providers = providers;
   }
 
-  public clearSubscriptions(callback: (error: Error, result: boolean) => void): void {
-    const promises = this.providers.map(
-      (p) =>
-        new Promise((resolve, reject) =>
-          p.eth.clearSubscriptions((error, result) => {
-            if (result) resolve(error);
-            else reject(error);
-          }),
-        ),
-    );
-
-    Promise.all(promises).then(
-      (_res) => callback(new Error(), true),
-      (res) => callback(res, false),
-    );
+  public clearSubscriptions(): void {
+    // @ts-expect-error
+    this.providers.forEach((p) => p.eth.clearSubscriptions());
   }
 
   public dispatchSignedTransaction(
