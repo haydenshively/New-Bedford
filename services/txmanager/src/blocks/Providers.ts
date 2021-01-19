@@ -67,7 +67,7 @@ const ProvidersFor = (chain: chain, specs: IProviderSpec[]): Web3[] => {
 };
 
 export class MultiSendProvider {
-  public providers: Web3[];
+  private providers: Web3[];
 
   constructor(chain: chain, specs: IProviderSpec[]) {
     this.providers = ProvidersFor(chain, specs);
