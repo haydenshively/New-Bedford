@@ -62,8 +62,8 @@ public class Worker {
 
         for (Token token : Token.values()) {
             // TODO: Change all balances to BigInteger (string in proto)
-            final BigInteger supplyBalance = candidate.getSupplyBalancesMap().get(token.getNumber());
-            final BigInteger borrowBalance = candidate.getBorrowBalancesMap().get(token.getNumber());
+            final BigDecimal supplyBalance = new BigDecimal(candidate.getSupplyBalancesMap().get(token.getNumber()));
+            final BigDecimal borrowBalance = new BigDecimal(candidate.getBorrowBalancesMap().get(token.getNumber()));
 
             // Use minimum token price if user is supplying, otherwise maximum
             if (!minPrices.containsKey(token) || !maxPrices.containsKey(token)) {
@@ -71,15 +71,15 @@ public class Worker {
             }
 
             // Disregard decimals, exchange rate (cToken <-> token) will take care of it
-            final TokenPrice price_USD = (supplyBalance > 0) ? minPrices.get(token) : maxPrices.get(token);
+            final TokenPrice price_USD = (supplyBalance.compareTo(new BigDecimal(0)) > 0) ? minPrices.get(token) : maxPrices.get(token);
 
 
-            final BigInteger exchangeRate = exchangeRates.get(token);
+            final BigDecimal exchangeRate = exchangeRates.get(token);
 
             final double collateralFactor = workerDB.getCompoundData().getGlobalTokenDataMap().get(token.getNumber()).getCollateralFactor();
 
             // Fix math forms
-            final BigInteger collatBalanceUSD = supplyBalance * exchangeRate * price_USD * collateralFactor;
+            final BigInteger collatBalanceUSD = supplyBalance.multiply(exchangeRate).multiply(price_USD).multiply(collateralFactor);
             final long borrowBalanceUSD = borrowBalance * price_USD;
             collat += collatBalanceUSD;
             borrow += borrowBalanceUSD;
