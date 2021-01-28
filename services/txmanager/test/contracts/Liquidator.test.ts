@@ -1,9 +1,11 @@
 import { expect } from 'chai';
 
 import { ITx } from '@goldenagellc/web3-blocks';
-import liquidator from '../../src/contracts/Liquidator';
+import liquidators from '../../src/contracts/Liquidator';
 
 describe('Liquidator Test', () => {
+  const liquidator = liquidators.latest;
+
   const pricesArr = [
     ['0x0', '0x0', '0x0'],
     ['0x0', '0x0', '0x0'],

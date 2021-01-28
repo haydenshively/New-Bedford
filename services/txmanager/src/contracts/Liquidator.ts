@@ -91,4 +91,17 @@ export class Liquidator extends Contract {
   }
 }
 
-export default new Liquidator('0x29FAe933BE0186605f0Aca29A2387AcDB9B5EECC');
+export enum Instances {
+  // v1,
+  // v2,
+  // ...
+  latest,
+}
+
+type InstanceMap<T> = { [d in keyof typeof Instances]: T };
+
+const liquidators: InstanceMap<Liquidator> = {
+  latest: new Liquidator('0x29FAe933BE0186605f0Aca29A2387AcDB9B5EECC'),
+};
+
+export default liquidators;

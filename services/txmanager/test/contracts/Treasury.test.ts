@@ -4,13 +4,15 @@ import Web3Utils from 'web3-utils';
 import Web3 from 'web3';
 
 import { providerFor, Big } from '@goldenagellc/web3-blocks';
-import treasury from '../../src/contracts/Treasury';
+import treasuries from '../../src/contracts/Treasury';
 
 require('dotenv-safe').config({
   example: process.env.CI ? '.env.ci.example' : '.env.example',
 });
 
 describe('Treasury Test', () => {
+  const treasury = treasuries.latest;
+
   let mainnetProvider: Web3;
   let ganacheProvider: Web3;
   let caller: string;
