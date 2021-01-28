@@ -23,7 +23,7 @@ interface ITimedBlock {
   pending: { [key: string]: Date };
 }
 
-export default class LatencyWatchBase {
+export default class LatencyInterpreter {
   private readonly maxArrLength: number;
 
   private readonly blockTimes: number[];
@@ -170,7 +170,7 @@ export default class LatencyWatchBase {
 
     if (this.blockTimes.length <= 3) return;
 
-    const durations = [];
+    const durations: number[] = [];
 
     for (const confirmedTxHash of block.transactions) {
       if (confirmedTxHash in this.blockCurr.pending) {

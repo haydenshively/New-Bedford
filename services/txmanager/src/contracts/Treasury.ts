@@ -36,4 +36,17 @@ export class Treasury extends Contract {
   }
 }
 
-export default new Treasury('0x6d21F25029A462B5aEEC2d4772de674fbD908d1e');
+export enum Instances {
+  // v1,
+  // v2,
+  // ...
+  latest,
+}
+
+type InstanceMap<T> = { [d in keyof typeof Instances]: T };
+
+const treasuries: InstanceMap<Treasury> = {
+  latest: new Treasury('0x6d21F25029A462B5aEEC2d4772de674fbD908d1e'),
+};
+
+export default treasuries;
