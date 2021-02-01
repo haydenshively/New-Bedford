@@ -19,7 +19,7 @@ message LiquidationCandidate {
   // Token prices, signatures, and messages (from Coinbase) corresponding to the ones that were used to determine liquidatability
   repeated TransactionTokenData tokens = 1;
   // Profitability (to determine maximum allowed transaction fee)
-  double expectedRevenue = 2;
+  string expectedRevenue = 2;
   // Candidate address
   string candidateAddress = 3;
   // Address of cToken to repay

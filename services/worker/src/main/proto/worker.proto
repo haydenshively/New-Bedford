@@ -83,7 +83,7 @@ message PriceRequest {
   map<int32, string> exchangeRates = 4;
 
   // On-chain price posting
-  uint32 timestamp = 5;
+  string timestamp = 5;
 }
 
 message PriceReply {
@@ -123,7 +123,7 @@ message CompoundData {
 
 // Can only be updated with a new Compound governance proposal, or changes to the token's ERC-20 contracts
 message GlobalTokenData {
-  double collateralFactor = 2;
+  string collateralFactor = 2;
   TokenType tokenType = 3;
   int32 underlyingDecimals = 4;
   string cTokenAddress = 5;
@@ -135,8 +135,8 @@ message Candidate {
   string address = 1;
   // Maps from Token (enum int) to amount
   // (varying decimals, supply is always 18 (cTokens), borrow is underlying decimals)
-  map<int32, uint64> supplyBalances = 2;
-  map<int32, uint64> borrowBalances = 3;
+  map<int32, string> supplyBalances = 2;
+  map<int32, string> borrowBalances = 3;
 }
 
 message Event {

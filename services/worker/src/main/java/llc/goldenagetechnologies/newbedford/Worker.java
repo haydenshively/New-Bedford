@@ -31,7 +31,7 @@ public class Worker {
         request.getMinPricesList().forEach((tokenPrice) -> minPrices.put(tokenPrice.getToken(), tokenPrice));
         request.getMaxPricesList().forEach((tokenPrice) -> maxPrices.put(tokenPrice.getToken(), tokenPrice));
         request.getExchangeRatesMap().forEach((key, value) -> {
-            exchangeRates.put(Token.forNumber(key), new BigInteger(value));
+            exchangeRates.put(Token.forNumber(key), new BigDecimal(value));
         });
     }
 
@@ -44,7 +44,7 @@ public class Worker {
 
     private Map<Token, TokenPrice> maxPrices;
     private Map<Token, TokenPrice> minPrices;
-    private Map<Token, BigInteger> exchangeRates;
+    private Map<Token, BigDecimal> exchangeRates;
 
     // To capture rising/falling edge of liquidatability in order to send both liquidateCandidate events and
     // cancelCandidate events
@@ -76,12 +76,12 @@ public class Worker {
 
             final BigDecimal exchangeRate = exchangeRates.get(token);
 
-            final double collateralFactor = workerDB.getCompoundData().getGlobalTokenDataMap().get(token.getNumber()).getCollateralFactor();
+            final String collateralFactor = workerDB.getCompoundData().getGlobalTokenDataMap().get(token.getNumber()).getCollateralFactor();
 
             // Fix math forms
-            final BigInteger collatBalanceUSD = supplyBalance.multiply(exchangeRate).multiply(price_USD).multiply(collateralFactor);
-            final long borrowBalanceUSD = borrowBalance * price_USD;
-            collat += collatBalanceUSD;
+            final BigDecimal collatBalanceUSD = supplyBalance.multiply(exchangeRate).multiply(new BigDecimal(price_USD.getPriceDollars())).multiply(new BigDecimal(collateralFactor));
+            final long borrowBalanceUSD = borrowBalance.longValue(); // borrowBalance.multiply(price_USD);
+            collat += collatBalanceUSD.longValue();
             borrow += borrowBalanceUSD;
         }
 

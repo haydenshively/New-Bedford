@@ -16,7 +16,7 @@ public class GlobalCompoundData {
         tokenDataMap.put(Token.cDAI_VALUE, GlobalTokenData.newBuilder()
                 .setTokenType(TokenType.V2)
                 .setUnderlyingDecimals(18)
-                .setCollateralFactor(0.75)
+                .setCollateralFactor("0.75")
                 .build());
 
         GLOBAL_COMPOUND_DATA = CompoundData.newBuilder()

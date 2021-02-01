@@ -1,0 +1,6 @@
+#!/bin/bash
+
+rm -rf src/main/proto
+cp -r ../shared/proto src/main/proto
+
+mvn -DskipTests clean package
