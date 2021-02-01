@@ -153,9 +153,9 @@ message Event {
   EventType eventType = 1;
   Token token = 2;
 
-  int32 candidateAddress = 3; // from address, in the event of a transfer
+  string candidateAddress = 3; // from address, in the event of a transfer
   string amount = 4;
-  int32 transferTo = 5;
+  string transferTo = 5;
 }
 
 message TokenPrice {
