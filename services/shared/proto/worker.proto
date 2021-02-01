@@ -154,13 +154,13 @@ message Event {
   Token token = 2;
 
   int32 candidateAddress = 3; // from address, in the event of a transfer
-  uint64 amount = 4;
+  string amount = 4;
   int32 transferTo = 5;
 }
 
 message TokenPrice {
   Token token = 1;
-  uint64 priceDollars = 2;
+  string priceDollars = 2;
   uint32 decimals = 3; // Always 6 for now
   string message = 4;
   string signature = 6;
