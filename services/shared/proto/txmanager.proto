@@ -17,6 +17,7 @@ message LiquidateReply {
 
 message LiquidationCandidate {
   // Token prices, signatures, and messages (from Coinbase) corresponding to the ones that were used to determine liquidatability
+  // If omitted for the specified cToken, don't update Compound price oracle and use current onchain prices
   repeated TransactionTokenData tokens = 1;
   // Profitability (to determine maximum allowed transaction fee)
   string expectedRevenue = 2;

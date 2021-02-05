@@ -68,8 +68,8 @@ message CandidateReply {
 message PriceRequest {
   enum PriceRequestType {
     NO_PRICEREQUEST_TYPE = 0;
-    OFFCHAIN_PRICE = 1;
-    PRICES_POSTED_ONCHAIN = 2; // Will also contain new prices for the posted token
+    OFFCHAIN_PRICE = 1; // Wait until first offchain price to begin worker calculations
+    PRICES_POSTED_ONCHAIN = 2; // Will also contain new prices for the posted token // NOT NEEDED
   }
 
   PriceRequestType priceRequestType = 1;
@@ -77,22 +77,21 @@ message PriceRequest {
   // Price Oracle posting
   repeated TokenPrice minPrices = 2;
   repeated TokenPrice maxPrices = 3;
-  // cToken->Token exchange rate update, send with off-chain prices
-  // Decimals are 10 + underlying
-  // Sent in string because can grow up to 10^28
-  map<int32, string> exchangeRates = 4;
 
-  // On-chain price posting
-  string timestamp = 5;
+  // Accept any price update - disregard origin, apply deltas
 }
 
 message PriceReply {
   // Success signalled by gRPC status code
 }
 
-// Borrow rate update
+// Borrow rate update - proc every block
 message CompoundRateRequest {
-  map<int32, string> borrowRate = 1;
+  // cToken->Token exchange rate update, send with off-chain prices
+  // Decimals are 10 + underlying
+  // Sent in string because can grow up to 10^28
+  map<int32, string> exchangeRates = 1;
+  map<int32, string> borrowRate = 2;
 }
 
 message CompoundRateReply {
