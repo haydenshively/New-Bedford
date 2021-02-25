@@ -16,15 +16,15 @@
     "big.js": "^5.2.2",
     "dotenv-safe": "^8.2.0",
     "ethereumjs-tx": "^2.1.2",
-    "truffle": "^5.1.60",
-    "web3": "^1.2.6",
+    "openzeppelin-solidity": "https://github.com/OpenZeppelin/openzeppelin-contracts#974c534210ab3347bdaa45f0f07cfe298a8a6866",
+    "truffle": "^5.1.65",
+    "web3": "^1.3.4",
     "winston": "^3.3.3"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "ganache-cli": "^6.9.1",
-    "mocha": "^7.2.0",
-    "vanity-eth": "^1.2.0"
+    "chai": "^4.3.0",
+    "ganache-cli": "^6.12.2",
+    "mocha": "^8.2.1"
   },
   "scripts": {
     "compile": "npx truffle compile",

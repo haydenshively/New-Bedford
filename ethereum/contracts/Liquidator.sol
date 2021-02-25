@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./openzeppelin/IERC20.sol";
-import "./openzeppelin/SafeERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/SafeERC20.sol";
 
 // Import Compound components
-import "./compound/CErc20.sol";
-import "./compound/Comptroller.sol";
-import "./compound/PriceOracle.sol";
+import "./external/compound/CERC20.sol";
+import "./external/compound/Comptroller.sol";
+import "./external/compound/UniswapAnchoredView.sol";
 
 // Import Uniswap components
-import "./uniswap/UniswapV2Library.sol";
-import "./uniswap/IUniswapV2Factory.sol";
-import "./uniswap/IUniswapV2Pair.sol";
+import "./external/uniswap/UniswapV2Library.sol";
+import "./external/uniswap/IUniswapV2Factory.sol";
+import "./external/uniswap/IUniswapV2Pair.sol";
 
-import "./ICHI.sol";
+import "./external/ICHI.sol";
+
+import "./PairSelector.sol";
 
 
 interface ITreasury {
@@ -22,32 +24,25 @@ interface ITreasury {
 }
 
 
-contract Liquidator {
+contract Liquidator is PairSelector {
     using SafeERC20 for IERC20;
 
-    // Known addresses --------------------------------------------------------------------
     address private constant CHI = 0x0000000000004946c0e9F43F4Dee607b0eF1fA1c;
-    address private constant ETH = address(0);
-    address private constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
-    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address private constant ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    address private constant FACTORY = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
 
-    // Constant parameters ----------------------------------------------------------------
-    uint private constant SLIPPAGE_THRESHOLD_FACT = 985; // = (1 - 1/sqrt(1.02)) for 2% slippage. Multiply by 100000 to get integer
     address payable private immutable treasury;
 
-    // Configurable parameters ------------------------------------------------------------
     Comptroller public comptroller;
-    PriceOracle public priceOracle;
+
+    UniswapAnchoredView public oracle;
 
     uint private closeFact;
+
     uint private liqIncent;
+
     uint private gasThreshold = 2000000;
 
-    // Modifiers --------------------------------------------------------------------------
     modifier onlyTreasury() {
-        require(msg.sender == treasury, "Nantucket: Not an owner");
+        require(msg.sender == treasury, "New Bedford: Unauthorized");
         _;
     }
 
@@ -58,21 +53,20 @@ contract Liquidator {
         ICHI(CHI).freeFromUpTo(treasury, (gasSpent + 14154) / 41947);
     }
 
-    // Constructor ------------------------------------------------------------------------
-    constructor(address payable _treasury, address _comptrollerAddress) {
+
+    constructor(address payable _treasury, address _comptrollerAddress) PairSelector() {
         treasury = _treasury;
         _setComptroller(_comptrollerAddress);
     }
 
-    // onlyTreasury functions -------------------------------------------------------------
+    /// @dev Delete the contract and send any available ETH to treasury
     function kill() external onlyTreasury {
-        // Delete the contract and send any available Eth to treasury
         selfdestruct(treasury);
     }
 
     function _setComptroller(address _comptrollerAddress) private {
         comptroller = Comptroller(_comptrollerAddress);
-        priceOracle = PriceOracle(comptroller.oracle());
+        oracle = UniswapAnchoredView(comptroller.oracle());
         closeFact = comptroller.closeFactorMantissa();
         liqIncent = comptroller.liquidationIncentiveMantissa();
     }
@@ -85,7 +79,6 @@ contract Liquidator {
         gasThreshold = _gasThreshold;
     }
 
-    // Liquidation functions --------------------------------------------------------------
     function liquidateSNWithPrice(
         bytes[] calldata _messages,
         bytes[] calldata _signatures,
@@ -93,7 +86,7 @@ contract Liquidator {
         address[] calldata _borrowers,
         address[] calldata _cTokens
     ) external {
-        priceOracle.postPrices(_messages, _signatures, _symbols);
+        oracle.postPrices(_messages, _signatures, _symbols);
         liquidateSN(_borrowers, _cTokens);
     }
 
@@ -115,7 +108,7 @@ contract Liquidator {
         address _repayCToken,
         address _seizeCToken
     ) external {
-        priceOracle.postPrices(_messages, _signatures, _symbols);
+        oracle.postPrices(_messages, _signatures, _symbols);
         liquidateS(_borrower, _repayCToken, _seizeCToken);
     }
 
@@ -129,19 +122,16 @@ contract Liquidator {
     function liquidateS(address _borrower, address _repayCToken, address _seizeCToken) public {
         ( , , uint shortfall) = comptroller.getAccountLiquidity(_borrower);
         if (shortfall == 0) return;
-        // uint(10**18) adjustments ensure that all place values are dedicated
-        // to repay and seize precision rather than unnecessary closeFact and liqIncent decimals
-        uint repayMax = CErc20(_repayCToken).borrowBalanceCurrent(_borrower) * closeFact / uint(10**18);
-        uint seizeMax = CErc20(_seizeCToken).balanceOfUnderlying(_borrower) * uint(10**18) / liqIncent;
 
-        uint uPriceRepay = priceOracle.getUnderlyingPrice(_repayCToken);
-        // Gas savings -- instead of making new vars `repayMax_Eth` and `seizeMax_Eth` just reassign
-        repayMax *= uPriceRepay;
-        seizeMax *= priceOracle.getUnderlyingPrice(_seizeCToken);
+        uint seizeTokensPerRepayToken = oracle.getUnderlyingPrice(_repayCToken) * liqIncent / oracle.getUnderlyingPrice(_seizeCToken); // 18 extra decimals
 
-        // Gas savings -- instead of creating new var `repay_Eth = repayMax < seizeMax ? ...` and then
-        // converting to underlying units by dividing by uPriceRepay, we can do it all in one step
-        liquidate(_borrower, _repayCToken, _seizeCToken, ((repayMax < seizeMax) ? repayMax : seizeMax) / uPriceRepay);
+        uint repay_BorrowConstrained = CERC20(_repayCToken).borrowBalanceStored(_borrower) * closeFact / 1e18; // 0 extra decimals
+        uint repay_SupplyConstrained = CERC20(_seizeCToken).balanceOf(_borrower) * CERC20(_seizeCToken).exchangeRateStored() / seizeTokensPerRepayToken; // 0 extra decimals
+        
+        uint repay = repay_BorrowConstrained < repay_SupplyConstrained ? repay_BorrowConstrained : repay_SupplyConstrained;
+        uint seize = repay * seizeTokensPerRepayToken / 1e18;
+
+        liquidate(_borrower, _repayCToken, _seizeCToken, repay, seize);
     }
 
     /**
@@ -150,32 +140,40 @@ contract Liquidator {
      * @param _borrower (address): the Compound user to liquidate
      * @param _repayCToken (address): a CToken for which the user is in debt
      * @param _seizeCToken (address): a CToken for which the user has a supply balance
-     * @param _amount (uint): the amount (specified in units of _repayCToken.underlying) to flash loan and pay off
+     * @param _repay (uint): the amount (specified in units of _repayCToken.underlying) that can be repaid
+     * @param _seize (uint): the amount (specified in units of _seizeCToken.underlying) that can be seized
      */
-    function liquidate(address _borrower, address _repayCToken, address _seizeCToken, uint _amount) public {
-        address pair;
-        address r;
+    function liquidate(
+        address _borrower,
+        address _repayCToken,
+        address _seizeCToken,
+        uint _repay,
+        uint _seize
+    ) public {
+        (address pair, address flashToken, uint maxSwap) = selectPairSlippageAware(_repayCToken, _seizeCToken, _seize);
 
-        if (_repayCToken == _seizeCToken || _seizeCToken == CETH) {
-            r = CErc20Storage(_repayCToken).underlying();
-            pair = UniswapV2Library.pairFor(FACTORY, r, WETH);
-        }
-        else if (_repayCToken == CETH) {
-            r = WETH;
-            pair = UniswapV2Library.pairFor(FACTORY, WETH, CErc20Storage(_seizeCToken).underlying());
-        }
-        else {
-            r = CErc20Storage(_repayCToken).underlying();
-            uint maxBorrow;
-            (maxBorrow, , pair) = UniswapV2Library.getReservesWithPair(FACTORY, r, CErc20Storage(_seizeCToken).underlying());
-
-            if (_amount * 100000 > maxBorrow * SLIPPAGE_THRESHOLD_FACT) pair = IUniswapV2Factory(FACTORY).getPair(r, WETH);
-        }
+        /**
+         * If we would have to pay more than a 5% premium to swap _seize,
+         * then lower _seize such that it sits right at the 5% premium.
+         * (_seize is lowered naturally by lowering _repay)
+         *
+         * NOTE: Even if the liquidation incentive is > 5%, there is no
+         *      guarantee that the trade will go through. This is because
+         *      Compound may price assets differently than Uniswap.
+         *
+         *      In general that would occur when the seized asset is dropping
+         *      in value on Coinbase faster than it is dropping on Uniswap.
+         *
+         *      To cover that case, we would need to set the liquidation
+         *      incentive as high as the Open Price Feed's anchor bounds.
+         *      20% is much too high, so we leave this problem for V2.
+         */
+        if (_seize > maxSwap) _repay = maxSwap * _repay / _seize;
 
         // Initiate flash swap
         bytes memory data = abi.encode(_borrower, _repayCToken, _seizeCToken);
-        uint amount0 = IUniswapV2Pair(pair).token0() == r ? _amount : 0;
-        uint amount1 = IUniswapV2Pair(pair).token1() == r ? _amount : 0;
+        uint amount0 = IUniswapV2Pair(pair).token0() == flashToken ? _repay : 0;
+        uint amount1 = IUniswapV2Pair(pair).token1() == flashToken ? _repay : 0;
 
         IUniswapV2Pair(pair).swap(amount0, amount1, treasury, data);
         payout(_seizeCToken);
@@ -183,10 +181,8 @@ contract Liquidator {
 
     function payout(address _seizeCToken) internal {
         if (_seizeCToken == CETH) ITreasury(treasury).payoutMax(WETH);
-        else ITreasury(treasury).payoutMax(CErc20Storage(_seizeCToken).underlying());
+        else ITreasury(treasury).payoutMax(CERC20Storage(_seizeCToken).underlying());
     }
-
-    // MARK - Chi functions ------------------------------------------------------------------------
 
     function liquidateSChi(address _borrower, address _repayCToken, address _seizeCToken) external discountCHI {
         liquidateS(_borrower, _repayCToken, _seizeCToken);
@@ -204,7 +200,7 @@ contract Liquidator {
         address _repayCToken,
         address _seizeCToken
     ) external discountCHI {
-        priceOracle.postPrices(_messages, _signatures, _symbols);
+        oracle.postPrices(_messages, _signatures, _symbols);
         liquidateS(_borrower, _repayCToken, _seizeCToken);
     }
 
@@ -215,7 +211,7 @@ contract Liquidator {
         address[] calldata _borrowers,
         address[] calldata _cTokens
     ) external discountCHI {
-        priceOracle.postPrices(_messages, _signatures, _symbols);
+        oracle.postPrices(_messages, _signatures, _symbols);
         liquidateSN(_borrowers, _cTokens);
     }
 }

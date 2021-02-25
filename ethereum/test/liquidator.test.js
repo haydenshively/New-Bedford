@@ -45,7 +45,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 33);
+    assert.equal(events.length, 29);
 
     checkRevenueDistributed(
       treasury,
@@ -58,11 +58,10 @@ contract("Liquidator Test", (accounts) => {
     const liquidator = await Liquidator.deployed();
     const treasury = await Treasury.deployed();
 
-    const tx = await liquidator.liquidate(
+    const tx = await liquidator.liquidateS(
       "0x2284de4652f31749d4c42dd663f68487d9d7cf42",
       "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
       "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
-      "6000000000000000000"
     );
     assert.isTrue(tx.receipt.status);
 
@@ -88,7 +87,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 33);
+    assert.equal(events.length, 29);
 
     checkRevenueDistributed(
       treasury,
@@ -109,7 +108,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 29);
+    assert.equal(events.length, 27);
 
     checkRevenueDistributed(
       treasury,
@@ -151,7 +150,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 37);
+    assert.equal(events.length, 34);
 
     const transferCHI = events[events.length - 2];
     assert.equal(
@@ -163,7 +162,7 @@ contract("Liquidator Test", (accounts) => {
       transferCHI,
       treasury.address,
       "0x0000000000000000000000000000000000000000",
-      "34"
+      "35"
     );
   });
 
