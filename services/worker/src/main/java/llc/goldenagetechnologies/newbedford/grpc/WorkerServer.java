@@ -79,5 +79,5 @@ public class WorkerServer extends WorkerGrpc.WorkerImplBase {
         };
     }
 
-    private WorkerController workerController;
+    private final WorkerController workerController;
 }

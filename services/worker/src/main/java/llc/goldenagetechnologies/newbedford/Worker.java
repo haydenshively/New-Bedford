@@ -23,7 +23,9 @@ public class Worker {
     }
 
     public void updateCandidate(CandidateRequest request) {
+        request.getCandidatesList().forEach((candidate -> {
 
+        }));
     }
 
     public void updatePrices(PriceRequest request) {
@@ -56,36 +58,33 @@ public class Worker {
      * @param candidate who to do calculation for
      * @return shortfall; a positive return value indicates that the account is liquidatable
      */
-    private long shortfallOf(Candidate candidate) {
-        long collat = 0;
-        long borrow = 0;
+    private BigDecimal shortfallOf(Candidate candidate) {
+        BigDecimal collat = BigDecimal.ZERO;
+        BigDecimal borrow = BigDecimal.ZERO;
 
         for (Token token : Token.values()) {
-            // TODO: Change all balances to BigInteger (string in proto)
             final BigDecimal supplyBalance = new BigDecimal(candidate.getSupplyBalancesMap().get(token.getNumber()));
             final BigDecimal borrowBalance = new BigDecimal(candidate.getBorrowBalancesMap().get(token.getNumber()));
 
             // Use minimum token price if user is supplying, otherwise maximum
             if (!minPrices.containsKey(token) || !maxPrices.containsKey(token)) {
-                return 0;
+                return BigDecimal.ZERO;
             }
 
             // Disregard decimals, exchange rate (cToken <-> token) will take care of it
             final TokenPrice price_USD = (supplyBalance.compareTo(new BigDecimal(0)) > 0) ? minPrices.get(token) : maxPrices.get(token);
 
-
             final BigDecimal exchangeRate = exchangeRates.get(token);
 
             final String collateralFactor = workerDB.getCompoundData().getGlobalTokenDataMap().get(token.getNumber()).getCollateralFactor();
 
-            // Fix math forms
             final BigDecimal collatBalanceUSD = supplyBalance.multiply(exchangeRate).multiply(new BigDecimal(price_USD.getPriceDollars())).multiply(new BigDecimal(collateralFactor));
-            final long borrowBalanceUSD = borrowBalance.longValue(); // borrowBalance.multiply(price_USD);
-            collat += collatBalanceUSD.longValue();
-            borrow += borrowBalanceUSD;
+            final BigDecimal borrowBalanceUSD = borrowBalance.multiply(new BigDecimal(price_USD.getPriceDollars())); // borrowBalance.multiply(price_USD);
+            collat = collat.add(collatBalanceUSD);
+            borrow = borrow.add(borrowBalanceUSD);
         }
 
-        return borrow - collat;
+        return borrow.subtract(collat);
     }
 
 }

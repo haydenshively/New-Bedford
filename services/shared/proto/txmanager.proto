@@ -26,6 +26,7 @@ message LiquidationCandidate {
   string repayTokenAddress = 4;
   // Address of cToken to seize
   string seizeTokenAddress = 5;
+  int64 blockExpiry = 6;
 }
 
 message TransactionTokenData {

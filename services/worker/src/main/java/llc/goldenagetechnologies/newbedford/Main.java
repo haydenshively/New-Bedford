@@ -3,12 +3,14 @@ package llc.goldenagetechnologies.newbedford;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import llc.goldenagetechnologies.newbedford.grpc.TxManagerClient;
 import llc.goldenagetechnologies.newbedford.grpc.WorkerServer;
 import llc.goldenagetechnologies.newbedford.threading.TxDelegator;
 import llc.goldenagetechnologies.newbedford.threading.TxManagerEvent;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -33,12 +35,13 @@ public class Main {
         WorkerController workerController = new WorkerController(numThreads, txDelegator);
         WorkerServer workerServer = new WorkerServer(workerController);
 
-        Server server = ServerBuilder.forPort(port)
+        Server server = NettyServerBuilder.forAddress(new InetSocketAddress(addr, port))
                 .addService(workerServer)
                 .build();
 
         // start
         server.start();
+        System.out.println("Worker server running on " + addr + ":" + port);
 
         // shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
