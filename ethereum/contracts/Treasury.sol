@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./openzeppelin/IERC20.sol";
-import "./openzeppelin/SafeERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/SafeERC20.sol";
 
-import "./ICHI.sol";
+import "./external/ICHI.sol";
+
 import "./Incognito.sol";
 import "./LiquidationCallee.sol";
 
