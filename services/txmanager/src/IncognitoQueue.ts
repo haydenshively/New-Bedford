@@ -59,8 +59,8 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
 
     // Check [again] that we are transitioning because of async/await and see if
     // on-chain caller matches staged address
-    // @ts-expect-error: `this.staged` is known to be non-null because of `this.transitioning`
-    if (this.transitioning && (await Treasury.latest.caller()(provider)) === this.staged.wallet.address) {
+    // Note: `this.staged` is known to be non-null because of `this.transitioning`
+    if (this.transitioning && (await Treasury.latest.caller()(provider)) === this.staged!.wallet.address) {
       // Transition was successful:
       // - update local state
       this.finishTransition();
@@ -75,8 +75,8 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
       // so that we test latency on every transition (since tx speed isn't as
       // crucial on these, it's fine to send with Infura to test latency)
       const balance = Big(await this.active.wallet.getBalance());
-      // @ts-expect-error: `this.staged` is known to be non-null because of `this.transitioning`
-      const tx = Treasury.latest.changeIdentity(this.staged.wallet.address, balance, this.gasPrice);
+      // Note: `this.staged` is known to be non-null because of `this.transitioning`
+      const tx = Treasury.latest.changeIdentity(this.staged!.wallet.address, balance, this.gasPrice);
       this.active.append(tx);
     }
   }
