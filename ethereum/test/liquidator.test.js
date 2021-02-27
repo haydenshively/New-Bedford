@@ -150,7 +150,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 34);
+    assert.equal(events.length, 33);
 
     const transferCHI = events[events.length - 2];
     assert.equal(
@@ -162,7 +162,7 @@ contract("Liquidator Test", (accounts) => {
       transferCHI,
       treasury.address,
       "0x0000000000000000000000000000000000000000",
-      "35"
+      "34"
     );
   });
 
