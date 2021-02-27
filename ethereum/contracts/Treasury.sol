@@ -14,53 +14,43 @@ contract Treasury is LiquidationCallee {
     using SafeERC20 for IERC20;
 
     // Events -----------------------------------------------------------------------------
-    event LogOwners(address ownerA, address ownerB);
     event AllowanceUpdated(uint allowance);
     event LiquidatorUpdated(address liquidator);
-    event FundsAdded(address owner, uint amount);
-    event FundsRemoved(address owner, uint amount);
-    event RiskIncreased(uint amount);
-    event ChiMinted(address owner, uint amount);
-    event RevenueDistributed(address asset, uint amount, uint sharesA, uint sharesB);
+    event FundsAdded(uint amount);
+    event FundsRemoved(uint amount);
+    event ChiMinted(uint amount);
+    event RevenueDistributed(address asset, uint amount);
 
     // Known addresses --------------------------------------------------------------------
     address private constant CHI = 0x0000000000004946c0e9F43F4Dee607b0eF1fA1c;
     address private constant ETH = address(0);
 
-    address payable private ownerA;
-    address payable private ownerB;
+    address payable private owner;
 
     address payable private caller;
     uint private callerAllowance = 2 ether;
 
-    uint public balanceAStored;
-    uint public balanceBStored;
-    uint public balanceAAtRisk;
-    uint public balanceBAtRisk;
+    uint public balanceStored;
 
     address payable public liquidator;
     address payable public liquidatorWrapper;
 
-    constructor(address payable _ownerA, address payable _ownerB) {
-        ownerA = _ownerA;
-        ownerB = _ownerB;
+    constructor(address payable _owner) {
+        owner = _owner;
         caller = payable(msg.sender);
     }
 
     // ------------------------------------------------------------------------------------
     // MARK: Owner privileges -------------------------------------------------------------
 
-    // Allows owners to change their address
+    // Allows owner to change their address
     function changeOwner(address payable _newOwner) external {
-        if (msg.sender == ownerA) ownerA = _newOwner;
-        if (msg.sender == ownerB) ownerB = _newOwner;
-        // logging
-        emit LogOwners(ownerA, ownerB);
+        if (msg.sender == owner) owner = _newOwner;
     }
 
-    // Allows owners to change the caller allowance
+    // Allows owner to change the caller allowance
     function setCallerAllowance(uint _amount) external {
-        require(msg.sender == ownerA || msg.sender == ownerB, "Treasury: Not an owner");
+        require(msg.sender == owner, "Treasury: Not owner");
         callerAllowance = _amount;
         // logging
         emit AllowanceUpdated(_amount);
@@ -68,7 +58,7 @@ contract Treasury is LiquidationCallee {
 
     // Allows owners to change the liquidator
     function setLiquidator(address payable _liquidator) external {
-        require(msg.sender == ownerA || msg.sender == ownerB, "Treasury: Not an owner");
+        require(msg.sender == owner, "Treasury: Not owner");
         liquidator = _liquidator;
         liquidatorWrapper = payable(new Incognito(liquidator));
         
@@ -80,68 +70,36 @@ contract Treasury is LiquidationCallee {
     // ------------------------------------------------------------------------------------
     // MARK: Funding functions ------------------------------------------------------------
 
-    // Allows any address to provide ETH that increases `_owner`'s share of revenue
+    // Allows any address to provide ETH to the treasury
     function fund(address _owner) external payable {
         // reject ETH if _owner is unknown
-        require(_owner == ownerA || _owner == ownerB, "Treasury: Not an owner");
-        // update balances
-        if (_owner == ownerA) balanceAStored += msg.value;
-        if (_owner == ownerB) balanceBStored += msg.value;
+        require(_owner == owner, "Treasury: Not owner");
+        // update balance
+        balanceStored += msg.value;
         // logging
-        emit FundsAdded(_owner, msg.value);
+        emit FundsAdded(msg.value);
     }
 
-    // Allows owners to take back ETH that they previously provided (as long as it hasn't
-    // been sent/spent already). Decreases their share of revenue
+    // Allows owner to take back ETH that they previously provided (as long as it hasn't
+    // been sent/spent already)
     function unfund(uint _amount) external {
-        if (msg.sender == ownerA) {
-            if (_amount > balanceAStored) _amount = balanceAStored;
-            ownerA.transfer(_amount);
-            balanceAStored -= _amount;
+        if (msg.sender == owner) {
+            if (_amount > balanceStored) _amount = balanceStored;
+            owner.transfer(_amount);
+            balanceStored -= _amount;
             // logging
-            emit FundsRemoved(msg.sender, _amount);
+            emit FundsRemoved(_amount);
         }
-
-        if (msg.sender == ownerB) {
-            if (_amount > balanceBStored) _amount = balanceBStored;
-            ownerB.transfer(_amount);
-            balanceBStored -= _amount;
-            // logging
-            emit FundsRemoved(msg.sender, _amount);
-        }
-    }
-
-    // Get the combined amount of ETH provided by the owners (that remains in the contract)
-    function _fundSize() private view returns (uint) {
-        unchecked { return balanceAStored + balanceBStored; }
     }
 
     // Sort of like spending funds (doing the math for that) but not actually sending them
     // anywhere in this function. Just adjusting balances.
-    // @return The actual amount deducted (differs from input arg if `_fundSize()` too small)
-    function _deduct(uint _amount, bool _willBeAtRisk) private returns (uint) {
-        uint available = _fundSize();
-        if (available == 0) return 0;
-        if (_amount > available) _amount = available;
+    // @return The actual amount deducted (differs from input arg if `balanceStored` too small)
+    function _deduct(uint _amount) private returns (uint) {
+        if (balanceStored == 0) return 0;
+        if (_amount > balanceStored) _amount = balanceStored;
 
-        if (_willBeAtRisk) {
-            uint half = _amount / 2;
-            uint diffA = half > balanceAStored ? balanceAStored : half;
-            uint diffB = half > balanceBStored ? balanceBStored : half;
-
-            if (balanceAStored > balanceBStored) diffA += _amount - diffA - diffB;
-            else diffB += _amount - diffA - diffB;
-
-            balanceAStored -= diffA;
-            balanceBStored -= diffB;
-            balanceAAtRisk += diffA;
-            balanceBAtRisk += diffB;
-            // logging
-            emit RiskIncreased(_amount);
-        } else {
-            balanceAStored -= _amount * balanceAStored / available;
-            balanceBStored -= _amount * balanceBStored / available;
-        }
+        balanceStored -= _amount;
 
         return _amount;
     }
@@ -151,14 +109,7 @@ contract Treasury is LiquidationCallee {
 
     // Send funds to the caller (the EOA that initiates liquidations)
     function _send(uint _amount) private {
-        caller.transfer(_deduct(_amount, true));
-    }
-
-    // Get the amount of ETH allocated to the current caller
-    // @notice Usually equal to callerAllowance, but necessary for cases when
-    //      callerAllowance gets changed by owners
-    function _totalAtRisk() private view returns (uint) {
-        return balanceAAtRisk + balanceBAtRisk;
+        caller.transfer(_deduct(_amount));
     }
 
     // Re-wrap the liquidator contract by creating a new proxy contract
@@ -181,18 +132,7 @@ contract Treasury is LiquidationCallee {
         caller = _caller;
 
         // put leftover funds back into stored balances
-        uint totalAtRisk = _totalAtRisk();
-        if (totalAtRisk != 0) {
-            balanceAStored += msg.value * balanceAAtRisk / totalAtRisk;
-            balanceBStored += msg.value * balanceBAtRisk / totalAtRisk;
-        } else {
-            balanceAStored += msg.value / 2;
-            balanceBStored += msg.value / 2;
-        }
-
-        // reset funds at-risk
-        balanceAAtRisk = 0;
-        balanceBAtRisk = 0;
+        balanceStored += msg.value;
         // now use all available funds to try to give new caller its allowance
         _send(callerAllowance);
 
@@ -203,42 +143,24 @@ contract Treasury is LiquidationCallee {
     // ------------------------------------------------------------------------------------
     // MARK: Payout functions -------------------------------------------------------------
 
-    // Determine revenue distribution by basic proportionality of funds at risk
-    // @return The percent of revenue owed to the owners, multiplied by 100000
-    function shares() public view returns (uint sharesA, uint sharesB) {
-        uint totalAtRisk = _totalAtRisk();
-
-        if (totalAtRisk == 0) {
-            sharesA = 50_000;
-            sharesB = 50_000;
-        } else {
-            sharesA = 100_000 * balanceAAtRisk / totalAtRisk;
-            sharesB = 100_000 * balanceBAtRisk / totalAtRisk;
-        }
-    }
-
     // Distribute revenue to owners according to current share distribution
     // @param _asset The address of the asset to distribute, could be ETH
     // @param _amount The amount of that asset to distribute
     // @notice _amount is only checked for ETH
     function payout(address _asset, uint _amount) public {
-        (uint sharesA, uint sharesB) = shares();
-
         // No need to check for overflow here unless we plan to be bazillionaires
         unchecked {
             if (_asset == ETH) {
                 // Payouts should never eat into active funds
-                uint maxPayout = address(this).balance - _fundSize();
+                uint maxPayout = address(this).balance - balanceStored;
                 if (_amount > maxPayout) _amount = maxPayout;
 
-                ownerA.transfer(_amount * sharesA / 100_000);
-                ownerB.transfer(_amount * sharesB / 100_000);
+                owner.transfer(_amount);
             } else {
-                IERC20(_asset).safeTransfer(ownerA, _amount * sharesA / 100_000);
-                IERC20(_asset).safeTransfer(ownerB, _amount * sharesB / 100_000);
+                IERC20(_asset).transfer(owner, _amount);
             }
             // logging
-            emit RevenueDistributed(_asset, _amount, sharesA, sharesB);
+            emit RevenueDistributed(_asset, _amount);
         }
     }
 
@@ -260,23 +182,22 @@ contract Treasury is LiquidationCallee {
     function mintCHI(address payable _owner, uint _amount) external {
         uint gasStart = gasleft();
 
-        require(_owner == ownerA || _owner == ownerB, "Treasury: Not an owner");
+        require(_owner == owner, "Treasury: Not owner");
         require(_amount <= 50, "Treasury: Mint too much");
         require(IERC20(CHI).balanceOf(address(this)) + _amount <= 400, "Treasury: CHI vault is full");
 
         ICHI(CHI).mint(_amount);
 
         uint fee = tx.gasprice * (21000 + gasStart - gasleft() + 16 * msg.data.length);
-        // SPECIAL USAGE OF DEDUCT!!
-        _owner.transfer(_deduct(fee, false));
+        _owner.transfer(_deduct(fee));
         // logging
-        emit ChiMinted(_owner, _amount);
+        emit ChiMinted(_amount);
     }
 
     // ------------------------------------------------------------------------------------
     // MARK: Liquidator admin functions ---------------------------------------------------
     function callLiquidator(address _target, bytes calldata _command) external {
-        require(msg.sender == ownerA || msg.sender == ownerB, "Treasury: Not an owner");
+        require(msg.sender == owner, "Treasury: Not owner");
         _target.call(_command);
     }
 }
