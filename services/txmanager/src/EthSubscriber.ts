@@ -4,11 +4,10 @@ import IEthSubscriptionConsumer from './types/IEthSubscriptionConsumer';
 
 export default class EthSubscriber {
   private readonly provider: Web3;
-  private consumers: IEthSubscriptionConsumer[];
+  private consumers: IEthSubscriptionConsumer[] = [];
 
   constructor(provider: Web3) {
     this.provider = provider;
-    this.consumers = [];
   }
 
   public init(): void {

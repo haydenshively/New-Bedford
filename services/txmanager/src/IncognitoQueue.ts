@@ -9,6 +9,8 @@ import IEthSubscriptionConsumer from './types/IEthSubscriptionConsumer';
 const winston = require('winston');
 /* eslint-enable @typescript-eslint/no-var-requires */
 
+type TransitionCallback = () => void | Promise<void>;
+
 /*
 Goal:
 At some point in time, the current queue will contain 0 or more transactions.
@@ -35,6 +37,8 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
   private staged: TxQueue | null;
   private gasPrice: Big;
 
+  private transitionCallbacks: TransitionCallback[] = [];
+
   constructor(initialWallet: Wallet) {
     this.active = new TxQueue(initialWallet);
     this.staged = null;
@@ -48,6 +52,14 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
 
   public get transitioning(): boolean {
     return this.staged !== null;
+  }
+
+  public registerTransitionCallback(callback: TransitionCallback): number {
+    return this.transitionCallbacks.push(callback) - 1;
+  }
+
+  public removeTransitionCallback(callbackId: number): void {
+    this.transitionCallbacks.splice(callbackId, 1);
   }
 
   public async onNewBlock(_header: BlockHeader, provider: Web3): Promise<void> {
@@ -81,7 +93,7 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
     }
   }
 
-  onNewTxHash(_hash: string, _provider: Web3): void {
+  public onNewTxHash(_hash: string, _provider: Web3): void {
     // Intentionally left blank
   }
 
@@ -107,6 +119,9 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
     // update state
     this.active = this.staged as TxQueue;
     this.staged = null;
+
+    // run callbacks
+    this.transitionCallbacks.forEach((callback) => callback());
   }
 
   private createPeer(): TxQueue {
