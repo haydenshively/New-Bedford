@@ -41,13 +41,13 @@ export default class CandidatePool {
     winston.info(`🧮 Removed ${candidateAddress.slice(0, 6)}`);
   }
 
-  // Insertion sort (candidates should never have more than ~10 elements)
+  // Descending insertion sort (candidates should never have more than ~10 elements)
   private sortCandidates() {
     for (let i = 1; i < this.candidates.length; i++) {
       const current = this.candidates[i];
       let j = i - 1;
 
-      while (j >= 0 && this.candidates[j].expectedRevenue > current.expectedRevenue) {
+      while (j >= 0 && this.candidates[j].expectedRevenue < current.expectedRevenue) {
         this.candidates[j + 1] = this.candidates[j];
         j -= 1;
       }
