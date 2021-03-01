@@ -45,7 +45,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 29);
+    assert.equal(events.length, 28);
 
     checkRevenueDistributed(
       treasury,
@@ -66,7 +66,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 39);
+    assert.equal(events.length, 38);
 
     checkRevenueDistributed(
       treasury,
@@ -87,7 +87,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 29);
+    assert.equal(events.length, 28);
 
     checkRevenueDistributed(
       treasury,
@@ -108,7 +108,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 27);
+    assert.equal(events.length, 26);
 
     checkRevenueDistributed(
       treasury,
@@ -124,14 +124,14 @@ contract("Liquidator Test", (accounts) => {
     // THE RESULTS OF THE FOLLOWING 3 TXNS ARE TESTED ELSEWHERE ----
     // make sure owner has enough ETH to call the setLiquidator function
     await web3.eth.sendTransaction({
-      to: accounts[2],
+      to: accounts[1],
       from: accounts[0],
       value: "1" + "0".repeat(18),
     });
     // tell the treasury what the liquidator's address is
-    await treasury.setLiquidator(liquidator.address, { from: accounts[2] });
+    await treasury.setLiquidator(liquidator.address, { from: accounts[1] });
     // mint some CHI
-    await treasury.mintCHI(accounts[2], 50, { from: accounts[2] });
+    await treasury.mintCHI(accounts[1], 50, { from: accounts[1] });
 
     // THE RESULT OF THE FOLLOWING TXN IS TESTED HERE ----------------
     // now perform actual liquidation
@@ -150,7 +150,7 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 34);
+    assert.equal(events.length, 33);
 
     const transferCHI = events[events.length - 2];
     assert.equal(
@@ -162,7 +162,7 @@ contract("Liquidator Test", (accounts) => {
       transferCHI,
       treasury.address,
       "0x0000000000000000000000000000000000000000",
-      "35"
+      "34"
     );
   });
 
