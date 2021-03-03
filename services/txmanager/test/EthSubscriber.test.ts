@@ -23,7 +23,7 @@ class TestConsumer implements IEthSubscriptionConsumer {
 }
 
 describe('EthSubscriber Test', function() {
-  this.timeout(30000);
+  this.timeout(60000);
 
   let provider: Web3;
   let ethSubscriber: EthSubscriber;
