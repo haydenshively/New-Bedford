@@ -97,7 +97,7 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
     // Intentionally left blank
   }
 
-  public async beginTransition(gasPrice: Big): Promise<void> {
+  public beginTransition(gasPrice: Big): void {
     // Ensure we're not already transitioning. It would be dangerous to stage multiple
     // new queues, as we may have successfully transitioned to stagedA on-chain and
     // not know it yet locally. Overwriting stagedA with some new stagedB would then

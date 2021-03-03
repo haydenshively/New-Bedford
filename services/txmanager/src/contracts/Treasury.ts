@@ -27,7 +27,8 @@ export class Treasury extends Contract {
     const maxTxFee = gasLimit.mul(gasPrice);
 
     const tx = this.txFor(this.inner.methods.changeIdentity(newEOA), gasLimit, gasPrice);
-    tx.value = Web3Utils.toHex(currentEOABalance.sub(maxTxFee).toFixed(0));
+    const value = currentEOABalance.sub(maxTxFee);
+    if (value.gt('0')) tx.value = Web3Utils.toHex(value.toFixed(0));
     return tx;
   }
 

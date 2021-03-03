@@ -75,7 +75,7 @@ describe('Treasury Test', () => {
       data: tx.data,
     });
     expect(receipt.status).to.be.true;
-  }).timeout(20000);
+  }).timeout(30000);
 
   it('should change identity', async () => {
     const currentEOABalance = await ganacheProvider.eth.getBalance(caller);
@@ -98,5 +98,5 @@ describe('Treasury Test', () => {
 
     expect(oldEOABalance).to.be.lessThan(Number(Web3Utils.toWei('0.01', 'ether')));
     expect(newEOABalance).to.be.greaterThan(0);
-  }).timeout(20000);
+  }).timeout(30000);
 });
