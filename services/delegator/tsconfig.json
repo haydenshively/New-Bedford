@@ -11,10 +11,10 @@
     "rootDir": "src",
     "outDir": "build",
     "allowJs": true,
+    "resolveJsonModule": true,
     "target": "ES2020"
   },
   "include": [
-    "../shared/global.d.ts",
     "src/**/*"
   ]
 }
