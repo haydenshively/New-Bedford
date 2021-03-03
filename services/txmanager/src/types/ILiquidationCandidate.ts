@@ -1,7 +1,7 @@
 import IOpenOraclePriceData from './IOpenOraclePriceData';
 import { CTokens } from './CTokens';
 
-export default interface LiquidationCandidate {
+export default interface ILiquidationCandidate {
   address: string;
   repayCToken: CTokens;
   seizeCToken: CTokens;

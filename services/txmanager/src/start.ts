@@ -70,14 +70,15 @@ txmanager.init();
 ipc.config.appspace = 'newbedford.';
 ipc.config.id = 'txmanager';
 ipc.config.silent = true;
-ipc.serve(() => {
-  ipc.server.on('liquidation-candidate-add', message => {
+ipc.serve('/tmp/newbedford.txmanager', () => {
+  ipc.server.on('liquidation-candidate-add', (message) => {
     console.log(message);
   });
-  ipc.server.on('liquidation-candidate-remove', message => {
+  ipc.server.on('liquidation-candidate-remove', (message) => {
     console.log(message);
   });
-})
+});
+ipc.server.start();
 
 process.on('SIGINT', () => {
   console.log('\nCaught interrupt signal');
