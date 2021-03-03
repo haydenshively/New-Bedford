@@ -1,6 +1,6 @@
 import Web3Utils from 'web3-utils';
 
-import { Big, Contract } from '@goldenagellc/web3-blocks';
+import { Big, Contract, ITx } from '@goldenagellc/web3-blocks';
 
 import abi from './abis/liquidator.json';
 
@@ -19,7 +19,7 @@ export class Liquidator extends Contract {
     repayCTokens: string[],
     seizeCTokens: string[],
     chi = true,
-  ) {
+  ): ITx {
     if (messages.length !== signatures.length || signatures.length !== symbols.length)
       throw new Error('When liquidating, messages, signatures, and symbols should have the same length');
     if (borrowers.length !== repayCTokens.length || repayCTokens.length !== seizeCTokens.length)
@@ -43,7 +43,7 @@ export class Liquidator extends Contract {
     seizeCTokens: string[],
     chi = true,
   ) {
-    const cTokens = this.combineCTokens(repayCTokens, seizeCTokens);
+    const cTokens = Liquidator.combineCTokens(repayCTokens, seizeCTokens);
     const handle = chi ? this.inner.methods.liquidateSNWithPriceChi : this.inner.methods.liquidateSNWithPrice;
     const method = handle(messages, signatures, symbols, borrowers, cTokens);
 
@@ -68,7 +68,7 @@ export class Liquidator extends Contract {
   }
 
   private liquidateSN(borrowers: string[], repayCTokens: string[], seizeCTokens: string[], chi = true) {
-    const cTokens = this.combineCTokens(repayCTokens, seizeCTokens);
+    const cTokens = Liquidator.combineCTokens(repayCTokens, seizeCTokens);
     const handle = chi ? this.inner.methods.liquidateSNChi : this.inner.methods.liquidateSN;
     const method = handle(borrowers, cTokens);
 
@@ -84,7 +84,7 @@ export class Liquidator extends Contract {
     return this.txFor(method, Liquidator.gasLimit);
   }
 
-  private combineCTokens(repay: string[], seize: string[]) {
+  private static combineCTokens(repay: string[], seize: string[]) {
     const cTokens = [];
     for (let i = 0; i < repay.length; i += 1) cTokens.push(repay[i], seize[i]);
     return cTokens;

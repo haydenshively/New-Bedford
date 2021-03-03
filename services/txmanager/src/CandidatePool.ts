@@ -2,16 +2,16 @@ import winston from 'winston';
 
 import ILiquidationCandidate from './types/ILiquidationCandidate';
 
-
 export default class CandidatePool {
   protected readonly candidates: ILiquidationCandidate[] = [];
+
   protected readonly candidateAddresses: Set<string> = new Set();
 
   protected get isActive(): boolean {
     return this.candidates.length !== 0;
   }
 
-  public addLiquidationCandidate(candidate: ILiquidationCandidate) {
+  public addLiquidationCandidate(candidate: ILiquidationCandidate): void {
     // Sanitize
     candidate.address = candidate.address.toLowerCase();
     // Insert
@@ -28,7 +28,7 @@ export default class CandidatePool {
     winston.info(`🐳 Added ${candidate.address.slice(0, 6)} for revenue of ${candidate.expectedRevenue} Eth`);
   }
 
-  public removeLiquidationCandidate(candidateAddress: string) {
+  public removeLiquidationCandidate(candidateAddress: string): void {
     // Sanitize
     candidateAddress = candidateAddress.toLowerCase();
     // Remove
@@ -43,7 +43,7 @@ export default class CandidatePool {
 
   // Descending insertion sort (candidates should never have more than ~10 elements)
   private sortCandidates() {
-    for (let i = 1; i < this.candidates.length; i++) {
+    for (let i = 1; i < this.candidates.length; i += 1) {
       const current = this.candidates[i];
       let j = i - 1;
 

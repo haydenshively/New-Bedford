@@ -1,28 +1,31 @@
 import Web3Utils from 'web3-utils';
+import Web3 from 'web3';
 
-import { Big, Contract } from '@goldenagellc/web3-blocks';
+import { Big, Contract, ITx } from '@goldenagellc/web3-blocks';
 
 import abi from './abis/treasury.json';
+
+type ProviderlessWeb3Caller<T> = (provider: Web3, block?: string | undefined) => Promise<T>;
 
 export class Treasury extends Contract {
   constructor(address: string) {
     super(address, abi as Web3Utils.AbiItem[]);
   }
 
-  public caller() {
+  public caller(): ProviderlessWeb3Caller<string> {
     return this.storageAt('2', (x) => Web3Utils.toChecksumAddress(x.slice(-40)));
   }
 
-  public callerAllowance() {
+  public callerAllowance(): ProviderlessWeb3Caller<string> {
     return this.storageAt('3', (x) => Web3Utils.hexToNumberString(x));
   }
 
-  public liquidatorWrapper() {
+  public liquidatorWrapper(): ProviderlessWeb3Caller<string> {
     const method = this.inner.methods.liquidatorWrapper();
     return this.callerFor(method, ['address'], (x) => x['0']);
   }
 
-  public changeIdentity(newEOA: string, currentEOABalance: Big, gasPrice: Big) {
+  public changeIdentity(newEOA: string, currentEOABalance: Big, gasPrice: Big): ITx {
     const gasLimit = Big('400000');
     const maxTxFee = gasLimit.mul(gasPrice);
 
@@ -32,7 +35,7 @@ export class Treasury extends Contract {
     return tx;
   }
 
-  public refillCaller(currentEOA: string) {
+  public refillCaller(currentEOA: string): ITx {
     return this.changeIdentity(currentEOA, Big('0'), Big('0'));
   }
 }

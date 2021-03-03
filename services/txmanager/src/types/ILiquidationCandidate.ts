@@ -1,6 +1,5 @@
 import IOpenOraclePriceData from './IOpenOraclePriceData';
-import { CTokens } from "./CTokens";
-
+import { CTokens } from './CTokens';
 
 export default interface LiquidationCandidate {
   address: string;

@@ -26,7 +26,7 @@ export default class LatencyTester {
     queue: TxQueue,
     tx: ITx,
     callback: (receipt: ITxReceipt | null) => void = () => {},
-    mainConnectionIdx = 1
+    mainConnectionIdx = 1,
   ): void {
     const timestamp = new Date();
     const sentTx = queue.append(tx, callback, mainConnectionIdx, false);

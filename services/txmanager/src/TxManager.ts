@@ -9,27 +9,33 @@ import IEthSubscriptionConsumer from './types/IEthSubscriptionConsumer';
 import ILiquidationCandidate from './types/ILiquidationCandidate';
 
 import CandidatePool from './CandidatePool';
-import Liquidator from './contracts/Liquidator';
-import Treasury from './contracts/Treasury';
+import liquidators from './contracts/Liquidator';
+import treasuries from './contracts/Treasury';
 
 // JSON
 import competitors from './_competitors.json';
+
 const competitorsFrom = new Set(competitors.from as string[]);
 const competitorsTo = new Set(competitors.to as string[]);
 
 const INITIAL_GAS_PRICE: Big = Big('100000000000');
-const DEADLINE_CUSHION: number = 500;
+const DEADLINE_CUSHION = 500;
 
 export default class TxManager extends CandidatePool implements IEthSubscriptionConsumer {
   private readonly incognito: IncognitoQueue;
+
   private readonly latency: LatencyInterpreter;
+
   private readonly provider: Web3;
 
   private tx: ITx | null = null;
+
   private gasPriceMax: Big = Big('0');
+
   private liquidatorWrapper: string | null = null;
 
-  private didSeeCompetitors: boolean = false;
+  private didSeeCompetitors = false;
+
   private intervalHandle: NodeJS.Timeout | null = null;
 
   constructor(incognito: IncognitoQueue, latency: LatencyInterpreter, provider: Web3) {
@@ -52,7 +58,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
     await this.queue.init();
     await this.queue.rebase();
 
-    await this.updateLiquidationWrapper()
+    await this.updateLiquidationWrapper();
     this.incognito.registerTransitionCallback(this.updateLiquidationWrapper.bind(this));
 
     // TODO: subscribe to liquidation events. If we successfully liquidate somebody,
@@ -60,7 +66,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
   }
 
   private async updateLiquidationWrapper() {
-    this.liquidatorWrapper = await Treasury.latest.liquidatorWrapper()(this.provider);
+    this.liquidatorWrapper = await treasuries.latest.liquidatorWrapper()(this.provider);
     winston.info(`♼ Liquidator is wrapped at ${this.liquidatorWrapper}`);
   }
 
@@ -87,15 +93,14 @@ export default class TxManager extends CandidatePool implements IEthSubscription
         return;
       }
       // ...but if alternative targets exist, we may as well try them
-      else {
-        // TODO in this for loop, we could check to make sure that our alternative candidate
-        // is liquidatable using the best candidate's prices (or newer prices)
-        // for (let i = 1; i < numCandidates; i++) {}
-        target = this.candidates[1];
-      }
+
+      // TODO in this for loop, we could check to make sure that our alternative candidate
+      // is liquidatable using the best candidate's prices (or newer prices)
+      // for (let i = 1; i < numCandidates; i++) {}
+      target = this.candidates[1];
     }
 
-    const tx = Liquidator.latest.liquidate(
+    const tx = liquidators.latest.liquidate(
       target.pricesToReport.messages,
       target.pricesToReport.signatures,
       target.pricesToReport.symbols,
@@ -190,8 +195,8 @@ export default class TxManager extends CandidatePool implements IEthSubscription
    * Dumps all transactions via `dumpAll()`, then cancels the periodic bidding function.
    * Should be called before exiting the program
    */
-  public stop() {
+  public stop(): void {
     if (this.intervalHandle !== null) clearInterval(this.intervalHandle);
-    for (let i = 0; i < this.queue.length; i++) this.queue.dump(i);
+    for (let i = 0; i < this.queue.length; i += 1) this.queue.dump(i);
   }
 }

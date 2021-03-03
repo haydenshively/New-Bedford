@@ -34,7 +34,9 @@ in the context of New Bedford. For now I'm just going to implement "end" and "la
 */
 export default class IncognitoQueue implements IEthSubscriptionConsumer {
   private active: TxQueue;
+
   private staged: TxQueue | null;
+
   private gasPrice: Big;
 
   private transitionCallbacks: TransitionCallback[] = [];
