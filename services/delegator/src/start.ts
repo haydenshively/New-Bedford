@@ -7,7 +7,6 @@ import ICompoundBorrower from './types/ICompoundBorrower';
 import { CTokens } from './types/CTokens';
 import cTokens from './contracts/CToken';
 import comptroller from './contracts/Comptroller';
-import { close } from 'fs';
 
 require('dotenv-safe').config();
 
