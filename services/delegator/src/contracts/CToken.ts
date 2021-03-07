@@ -76,7 +76,6 @@ export class CToken extends Contract {
 
   public connectTo(provider: Web3): ConnectedContract {
     if (this.connectedInner === null) this.connectedInner = new provider.eth.Contract(this.abi, this.address);
-    this.connectedInner.events.Borrow();
     return { subscribeTo: this.subscriptionMap };
   }
 
