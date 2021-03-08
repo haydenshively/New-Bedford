@@ -10,7 +10,7 @@
     "node": ">=14.0.0"
   },
   "dependencies": {
-    "@goldenagellc/web3-blocks": "^0.0.6",
+    "@goldenagellc/web3-blocks": "^0.0.7",
     "@grpc/grpc-js": "^1.2.2",
     "big.js": "^5.2.2",
     "dotenv-safe": "^8.2.0",

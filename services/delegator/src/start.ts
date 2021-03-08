@@ -40,7 +40,7 @@ const collateralFactors: { -readonly [d in keyof typeof CTokens]: Big | null } =
 async function start() {
   // CLOSE FACTOR
   comptroller
-    .connectTo(provider)
+    .bindTo(provider)
     .subscribeTo.NewCloseFactor('latest')
     .on('connected', async (_id: string) => {
       const x = await comptroller.closeFactor()(provider);
@@ -63,7 +63,7 @@ async function start() {
 
   // LIQUIDATION INCENTIVE
   comptroller
-    .connectTo(provider)
+    .bindTo(provider)
     .subscribeTo.NewLiquidationIncentive('latest')
     .on('connected', async (_id: string) => {
       const x = await comptroller.liquidationIncentive()(provider);
@@ -86,7 +86,7 @@ async function start() {
 
   // COLLATERAL FACTORS
   comptroller
-    .connectTo(provider)
+    .bindTo(provider)
     .subscribeTo.NewCollateralFactor('latest')
     .on('connected', (_id: string) => {
       symbols.forEach(async (symbol) => {
@@ -130,7 +130,7 @@ async function start() {
 start();
 
 symbols.forEach((symbol) => {
-  const accrueInterestEmitter = cTokens[symbol].connectTo(provider).subscribeTo.AccrueInterest('latest');
+  const accrueInterestEmitter = cTokens[symbol].bindTo(provider).subscribeTo.AccrueInterest('latest');
 
   accrueInterestEmitter
     // .on('connected', (id: string) => console.log(`Connected ${symbol} at ${id}`))

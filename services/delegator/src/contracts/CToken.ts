@@ -1,22 +1,12 @@
-import { EventEmitter } from 'events';
-import { Contract as IWeb3Contract } from 'web3-eth-contract';
-import { BlockNumber } from 'web3-core';
 import Web3Utils from 'web3-utils';
-import Web3 from 'web3';
 
-import { Big, Contract } from '@goldenagellc/web3-blocks';
+import { Big, BindableContract, ContractCaller } from '@goldenagellc/web3-blocks';
 
 import { CTokens, CTokenCreationBlocks } from '../types/CTokens';
-import { CTokenEvents } from '../types/CTokenEvents';
 
 import abiEth from './abis/cether.json';
 import abiV1 from './abis/ctokenv1.json';
 import abiV2 from './abis/ctokenv2.json';
-
-type ProviderlessWeb3Caller<T> = (provider: Web3, block?: string | undefined) => Promise<T>;
-
-type InstanceMap<T> = { [d in keyof typeof CTokens]: T };
-type SubscriptionMap = { [d in keyof typeof CTokenEvents]: (fromBlock: BlockNumber) => EventEmitter };
 
 interface AccountSnapshot {
   error: string;
@@ -25,44 +15,37 @@ interface AccountSnapshot {
   exchangeRate: Big;
 }
 
-interface ConnectedContract {
-  subscribeTo: SubscriptionMap;
+export enum CTokenEvents {
+  AccrueInterest = 'AccrueInterest',
+  Mint = 'Mint',
+  Redeem = 'Redeem',
+  Borrow = 'Borrow',
+  RepayBorrow = 'RepayBorrow',
+  LiquidateBorrow = 'LiquidateBorrow',
+  Transfer = 'Transfer',
 }
 
-export class CToken extends Contract {
-  private readonly creationBlock: number;
-  private readonly subscriptionMap: SubscriptionMap = {
-    AccrueInterest: (fromBlock) => this.subscribeTo(CTokenEvents.AccrueInterest, fromBlock),
-    Mint: (fromBlock) => this.subscribeTo(CTokenEvents.Mint, fromBlock),
-    Redeem: (fromBlock) => this.subscribeTo(CTokenEvents.Redeem, fromBlock),
-    Borrow: (fromBlock) => this.subscribeTo(CTokenEvents.Borrow, fromBlock),
-    RepayBorrow: (fromBlock) => this.subscribeTo(CTokenEvents.RepayBorrow, fromBlock),
-    LiquidateBorrow: (fromBlock) => this.subscribeTo(CTokenEvents.LiquidateBorrow, fromBlock),
-    Transfer: (fromBlock) => this.subscribeTo(CTokenEvents.Transfer, fromBlock),
-  };
-  private connectedInner: IWeb3Contract | null = null;
-
+export class CToken extends BindableContract<typeof CTokenEvents> {
   constructor(address: string, abi: any, creationBlock: number) {
-    super(address, abi as Web3Utils.AbiItem[]);
-    this.creationBlock = creationBlock;
+    super(address, abi as Web3Utils.AbiItem[], CTokenEvents, creationBlock);
   }
 
-  public exchangeRateStored(): ProviderlessWeb3Caller<Big> {
+  public exchangeRateStored(): ContractCaller<Big> {
     const method = this.inner.methods.exchangeRateStored();
     return this.callerForUint256(method);
   }
 
-  public balanceOf(account: string): ProviderlessWeb3Caller<Big> {
+  public balanceOf(account: string): ContractCaller<Big> {
     const method = this.inner.methods.balanceOf(account);
     return this.callerForUint256(method);
   }
 
-  public borrowBalanceStored(account: string): ProviderlessWeb3Caller<Big> {
+  public borrowBalanceStored(account: string): ContractCaller<Big> {
     const method = this.inner.methods.borrowBalanceStored(account);
     return this.callerForUint256(method);
   }
 
-  public getAccountSnapshot(account: string): ProviderlessWeb3Caller<AccountSnapshot> {
+  public getAccountSnapshot(account: string): ContractCaller<AccountSnapshot> {
     const method = this.inner.methods.getAccountSnapshot(account);
     return this.callerFor(method, ['uint256', 'uint256', 'uint256', 'uint256'], (x) => {
       return {
@@ -73,16 +56,9 @@ export class CToken extends Contract {
       } as AccountSnapshot;
     });
   }
-
-  public connectTo(provider: Web3): ConnectedContract {
-    if (this.connectedInner === null) this.connectedInner = new provider.eth.Contract(this.abi, this.address);
-    return { subscribeTo: this.subscriptionMap };
-  }
-
-  private subscribeTo(event: CTokenEvents, fromBlock: BlockNumber): EventEmitter {
-    return this.connectedInner!.events[event]({ fromBlock: fromBlock === 'earliest' ? this.creationBlock : fromBlock });
-  }
 }
+
+type InstanceMap<T> = { [d in keyof typeof CTokens]: T };
 
 const cTokens: InstanceMap<CToken> = {
   cBAT: new CToken(CTokens.cBAT, abiV1, CTokenCreationBlocks.cBAT),
