@@ -7,6 +7,7 @@ import ICompoundBorrower from './types/ICompoundBorrower';
 import { CTokens } from './types/CTokens';
 import cTokens from './contracts/CToken';
 import comptroller from './contracts/Comptroller';
+import StatefulComptroller from './StatefulComptroller';
 
 require('dotenv-safe').config();
 
@@ -21,105 +22,15 @@ const symbols: (keyof typeof CTokens)[] = <(keyof typeof CTokens)[]>Object.keys(
 import addressesJSON from './_borrowers.json';
 const addressesList = new Set<string>([...addressesJSON.high_value, ...addressesJSON.previously_liquidated]);
 
-let closeFactor: Big | null = null;
-let liquidationIncentive: Big | null = null;
-const collateralFactors: { -readonly [d in keyof typeof CTokens]: Big | null } = {
-  cBAT: null,
-  cCOMP: null,
-  cDAI: null,
-  cETH: null,
-  cREP: null,
-  cSAI: null,
-  cUNI: null,
-  cUSDC: null,
-  cUSDT: null,
-  cWBTC: null,
-  cZRX: null,
-};
+const statefulComptroller = new StatefulComptroller(provider, comptroller);
 
 async function start() {
-  // CLOSE FACTOR
-  comptroller
-    .bindTo(provider)
-    .subscribeTo.NewCloseFactor('latest')
-    .on('connected', async (_id: string) => {
-      const x = await comptroller.closeFactor()(provider);
-      if (closeFactor === null) {
-        closeFactor = x;
-        console.log(`Fetch: close factor set to ${closeFactor.toFixed(0)}`);
-      }
-    })
-    .on('data', async (ev: EventData) => {
-      const x = ev.returnValues.newCloseFactorMantissa;
-      closeFactor = Big(x);
-      console.log(`Event: close factor set to ${x}`);
-    })
-    .on('changed', async (ev: EventData) => {
-      const x = ev.returnValues.oldCloseFactorMantissa;
-      closeFactor = Big(x);
-      console.log(`Event: close factor reverted to ${x}`);
-    })
-    .on('error', console.log);
-
-  // LIQUIDATION INCENTIVE
-  comptroller
-    .bindTo(provider)
-    .subscribeTo.NewLiquidationIncentive('latest')
-    .on('connected', async (_id: string) => {
-      const x = await comptroller.liquidationIncentive()(provider);
-      if (liquidationIncentive === null) {
-        liquidationIncentive = x;
-        console.log(`Fetch: liquidation incentive set to ${x.toFixed(0)}`);
-      }
-    })
-    .on('data', (ev: EventData) => {
-      const x = ev.returnValues.newLiquidationIncentiveMantissa;
-      liquidationIncentive = Big(x);
-      console.log(`Event: liquidation incentive set to ${x}`);
-    })
-    .on('changed', (ev: EventData) => {
-      const x = ev.returnValues.oldLiquidationIncentiveMantissa;
-      liquidationIncentive = Big(x);
-      console.log(`Event: liquidation incentive reverted to ${x}`);
-    })
-    .on('error', console.log);
-
-  // COLLATERAL FACTORS
-  comptroller
-    .bindTo(provider)
-    .subscribeTo.NewCollateralFactor('latest')
-    .on('connected', (_id: string) => {
-      symbols.forEach(async (symbol) => {
-        const x = await comptroller.collateralFactorOf(CTokens[symbol])(provider);
-        if (collateralFactors[symbol] === null) {
-          collateralFactors[symbol] = x;
-          console.log(`Fetch: ${symbol} collateral factor set to ${x.toFixed(0)}`);
-        }
-      });
-    })
-    .on('data', (ev: EventData) => {
-      const address: string = ev.returnValues.cToken;
-      const x = ev.returnValues.newCollateralFactorMantissa;
-
-      symbols.forEach((symbol) => {
-        if (CTokens[symbol] === address) {
-          collateralFactors[symbol] = Big(x);
-          console.log(`Fetch: ${symbol} collateral factor set to ${x.toFixed(0)}`);
-        }
-      });
-    })
-    .on('changed', (ev: EventData) => {
-      const address: string = ev.returnValues.cToken;
-      const x = ev.returnValues.oldCollateralFactorMantissa;
-
-      symbols.forEach((symbol) => {
-        if (CTokens[symbol] === address) {
-          collateralFactors[symbol] = Big(x);
-          console.log(`Fetch: ${symbol} collateral factor set to ${x.toFixed(0)}`);
-        }
-      });
-    })
-    .on('error', console.log);
+  await statefulComptroller.init();
+  console.log(statefulComptroller.getCloseFactor().toFixed(0));
+  console.log(statefulComptroller.getLiquidationIncentive().toFixed(0));
+  console.log(statefulComptroller.getCollateralFactors().cBAT.toFixed(0));
+  console.log(statefulComptroller.getCollateralFactors().cCOMP.toFixed(0));
+  console.log(statefulComptroller.getCollateralFactors().cDAI.toFixed(0));
 }
 
 // const borrowers: ICompoundBorrower[] = [];

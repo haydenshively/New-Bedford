@@ -12,7 +12,7 @@ export enum CTokens {
   cZRX = '0xB3319f5D18Bc0D84dD1b4825Dcde5d5f7266d407',
 }
 
-export const CTokenCreationBlocks: { [d in keyof typeof CTokens]: number } = {
+export const CTokenCreationBlocks: { [_ in keyof typeof CTokens]: number } = {
   cBAT: 7710735,
   cCOMP: 10960099,
   cDAI: 8983575,
@@ -25,3 +25,5 @@ export const CTokenCreationBlocks: { [d in keyof typeof CTokens]: number } = {
   cWBTC: 8163813,
   cZRX: 7710733,
 };
+
+export const symbols = <(keyof typeof CTokens)[]>Object.keys(CTokens);

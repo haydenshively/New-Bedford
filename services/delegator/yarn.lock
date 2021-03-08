@@ -239,8 +239,8 @@
 
 "@goldenagellc/web3-blocks@^0.0.7":
   version "0.0.7"
-  resolved "https://npm.pkg.github.com/download/@goldenagellc/web3-blocks/0.0.7/4dc54d8b155b401213eb5810269529947084c0ea1535322cef1b3ce377958d26#b636db3c1af24ab982afea6492581ce6fc3a69cd"
-  integrity sha512-pp4eM8GsDMum2/D3pVNdcVeqpLJ1G2xvyejzc00Vb5RbH3bVUfuFvxLDynw8xL4yLawzryY2ZmPV6HI0W36KLw==
+  resolved "https://npm.pkg.github.com/download/@goldenagellc/web3-blocks/0.0.7/7efe24d20a4b90a791b3b52f635720e959bb733b5ac1a787f5dcba7251250942#81f5f1e517fa916be3c5e5fd309eadb19b98792b"
+  integrity sha512-nu9SakXKtaA5t2ORIyp42uxQ503lE7vczyrJWRNRzgFrv8c2i+z2IcfyeJ5q3rlFCPhUeep4fHfo9nobSAn52Q==
   dependencies:
     "@ethereumjs/common" "^2.0.0"
     "@ethereumjs/tx" "^3.0.0"
