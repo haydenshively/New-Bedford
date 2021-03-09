@@ -7,6 +7,20 @@ import { PriceData } from './contracts/PriceData';
 import { PriceFeed } from './contracts/PriceFeed';
 import { CTokens, CTokenUnderlyingDecimals as decimals, symbols } from './types/CTokens';
 
+const KEY_SYMBOL: { [i: string]: keyof typeof CTokens } = {
+  BAT: 'cBAT',
+  COMP: 'cCOMP',
+  DAI: 'cDAI',
+  ETH: 'cETH',
+  REP: 'cREP',
+  SAI: 'cSAI',
+  UNI: 'cUNI',
+  USDC: 'cUSDC',
+  USDT: 'cUSDT',
+  BTC: 'cWBTC',
+  ZRX: 'cZRX',
+};
+
 interface Price {
   value: Big;
   timestamp: number;
@@ -46,16 +60,8 @@ export default class StatefulPriceFeed {
     this.subscribeToPrices(block);
   }
 
-  public getPriceOf(symbol: keyof typeof CTokens): Price {
+  public getPrice(symbol: keyof typeof CTokens): Price {
     return this.prices[symbol][0];
-  }
-
-  public getPrices(): { [_ in keyof typeof CTokens]: Price } {
-    return Object.fromEntries(
-      Object.keys(CTokens).map((symbol) => {
-        return [symbol, this.prices[symbol as keyof typeof CTokens][0]];
-      }),
-    ) as { [_ in keyof typeof CTokens]: Price };
   }
 
   private fetchPrices(block: number): Promise<void>[] {
@@ -78,8 +84,8 @@ export default class StatefulPriceFeed {
         console.log(`StatefulPriceFeed: Bound prices to ${id}`);
       })
       .on('data', (ev: EventData) => {
-        if (!Object.keys(this.prices).includes(`c${ev.returnValues.key}`)) return;
-        const symbol = `c${ev.returnValues.key}` as keyof typeof CTokens;
+        if (!Object.keys(KEY_SYMBOL).includes(ev.returnValues.key)) return;
+        const symbol = KEY_SYMBOL[ev.returnValues.key];
 
         // Store the new price
         const newPrice = {
@@ -91,18 +97,23 @@ export default class StatefulPriceFeed {
         this.prices[symbol].push(newPrice);
         // Sort in-place, most recent timestamp first (in case events come out-of-order)
         this.prices[symbol].sort((a, b) => b.timestamp - a.timestamp);
-        // Assume chain won't reorder more than 12 blocks, and trim prices array accordingly
+        // Assume chain won't reorder more than 12 blocks, and trim prices array accordingly...
+        // BUT always maintain at least 2 items in the array (new price and 1 other price)
+        // in case the new price gets removed from the chain later on (need fallback)
         const idx = this.prices[symbol].findIndex((p) => newPrice.block - p.block > 12);
-        if (idx !== -1) this.prices[symbol].splice(idx);
+        if (idx !== -1) this.prices[symbol].splice(Math.max(idx, 2));
 
-        console.log(`${symbol} price is now at $${newPrice.value.toFixed(0)}`);
+        console.log(`${symbol} price is now at $${newPrice.value.div('1e+6').toFixed(0)}`);
+        console.log(`${symbol} price array has length ${this.prices[symbol].length}`);
       })
       .on('changed', (ev: EventData) => {
-        if (!Object.keys(this.prices).includes(`c${ev.returnValues.key}`)) return;
-        const symbol = `c${ev.returnValues.key}` as keyof typeof CTokens;
+        if (!Object.keys(KEY_SYMBOL).includes(ev.returnValues.key)) return;
+        const symbol = KEY_SYMBOL[ev.returnValues.key];
 
         const idx = this.prices[symbol].findIndex((p) => p.block === ev.blockNumber && p.logIndex === ev.logIndex);
         if (idx !== -1) this.prices[symbol].splice(idx, 1);
+
+        console.log(`${symbol} price data was changed by chain reordering`);
       })
       .on('error', console.log);
   }
