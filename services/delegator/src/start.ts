@@ -6,8 +6,13 @@ import { Big, providerFor } from '@goldenagellc/web3-blocks';
 import ICompoundBorrower from './types/ICompoundBorrower';
 import { CTokens } from './types/CTokens';
 import cTokens from './contracts/CToken';
+
 import comptroller from './contracts/Comptroller';
+import priceData from './contracts/PriceData';
+import priceFeed from './contracts/PriceFeed';
+
 import StatefulComptroller from './StatefulComptroller';
+import StatefulPriceFeed from './StatefulPriceFeed';
 
 require('dotenv-safe').config();
 
@@ -23,14 +28,26 @@ import addressesJSON from './_borrowers.json';
 const addressesList = new Set<string>([...addressesJSON.high_value, ...addressesJSON.previously_liquidated]);
 
 const statefulComptroller = new StatefulComptroller(provider, comptroller);
+const statefulPriceFeed = new StatefulPriceFeed(provider, priceData, priceFeed);
 
 async function start() {
   await statefulComptroller.init();
+  await statefulPriceFeed.init();
+
   console.log(statefulComptroller.getCloseFactor().toFixed(0));
   console.log(statefulComptroller.getLiquidationIncentive().toFixed(0));
-  console.log(statefulComptroller.getCollateralFactors().cBAT.toFixed(0));
-  console.log(statefulComptroller.getCollateralFactors().cCOMP.toFixed(0));
-  console.log(statefulComptroller.getCollateralFactors().cDAI.toFixed(0));
+
+  const prices = statefulPriceFeed.getPrices();
+  const collateralFactors = statefulComptroller.getCollateralFactors();
+
+  for (let symbol in prices) {
+    console.log(
+      // @ts-expect-error
+      `${symbol} price is ${prices[symbol].value.div(1e6).toFixed(3)} with a CF of ${collateralFactors[symbol]
+        .div(1e18)
+        .toFixed(2)}`,
+    );
+  }
 }
 
 // const borrowers: ICompoundBorrower[] = [];

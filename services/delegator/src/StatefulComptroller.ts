@@ -61,6 +61,10 @@ export default class StatefulComptroller {
     return this.liquidationIncentive?.value;
   }
 
+  public getCollateralFactorOf(symbol: keyof typeof CTokens): Big | null {
+    return this.collateralFactors[symbol]?.value;
+  }
+
   public getCollateralFactors(): { [_ in keyof typeof CTokens]: Big | null } {
     return Object.fromEntries(
       Object.keys(CTokens).map((symbol) => {

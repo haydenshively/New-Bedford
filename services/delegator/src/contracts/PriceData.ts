@@ -2,7 +2,7 @@ import Web3Utils from 'web3-utils';
 
 import { BindableContract } from '@goldenagellc/web3-blocks';
 
-import abi from './abis/uniswapanchoredview.json';
+import abi from './abis/openoraclepricedata.json';
 
 export enum PriceDataEvents {
   Write = 'Write',

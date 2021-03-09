@@ -26,4 +26,18 @@ export const CTokenCreationBlocks: { [_ in keyof typeof CTokens]: number } = {
   cZRX: 7710733,
 };
 
+export const CTokenUnderlyingDecimals: { [_ in keyof typeof CTokens]: number } = {
+  cBAT: 18,
+  cCOMP: 18,
+  cDAI: 18,
+  cETH: 18,
+  cREP: 18,
+  cSAI: 18,
+  cUNI: 18,
+  cUSDC: 6,
+  cUSDT: 6,
+  cWBTC: 8,
+  cZRX: 18,
+};
+
 export const symbols = <(keyof typeof CTokens)[]>Object.keys(CTokens);
