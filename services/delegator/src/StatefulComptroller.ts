@@ -5,7 +5,6 @@ import { Big } from '@goldenagellc/web3-blocks';
 
 import { Comptroller } from './contracts/Comptroller';
 import { CTokens, symbols } from './types/CTokens';
-import { test } from 'mocha';
 
 interface BlockchainNumber {
   value: Big;
