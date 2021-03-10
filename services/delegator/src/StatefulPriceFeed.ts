@@ -7,10 +7,9 @@ import { PriceData } from './contracts/PriceData';
 import { PriceFeed } from './contracts/PriceFeed';
 import { CoinbaseKey, coinbaseKeyMap } from './types/CoinbaseKeys';
 import { CTokens, CTokenSymbol, cTokenSymbols, CTokenUnderlyingDecimals as decimals } from './types/CTokens';
+import IPrice from './types/IPrice';
 
-interface Price {
-  value: Big;
-  timestamp: number;
+interface IOnChainPrice extends IPrice {
   block: number;
   logIndex: number;
 }
@@ -20,7 +19,7 @@ export default class StatefulPriceFeed {
   private readonly priceData: PriceData;
   private readonly priceFeed: PriceFeed;
 
-  private prices: { [_ in CTokenSymbol]: Price[] } = {
+  private prices: { [_ in CTokenSymbol]: IOnChainPrice[] } = {
     cBAT: [],
     cCOMP: [],
     cDAI: [],
@@ -47,7 +46,7 @@ export default class StatefulPriceFeed {
     this.subscribeToPrices(block);
   }
 
-  public getPrice(symbol: CTokenSymbol): Price {
+  public getPrice(symbol: CTokenSymbol): IOnChainPrice {
     return this.prices[symbol][0];
   }
 
@@ -56,7 +55,7 @@ export default class StatefulPriceFeed {
       const price = await this.priceFeed.getUnderlyingPrice(CTokens[symbol])(this.provider, block);
       this.prices[symbol].push({
         value: price.div(`1e+${(36 - 6 - decimals[symbol]).toFixed(0)}`),
-        timestamp: 0,
+        timestamp: '0',
         block: block,
         logIndex: 0,
       });
@@ -77,13 +76,13 @@ export default class StatefulPriceFeed {
         // Store the new price
         const newPrice = {
           value: Big(ev.returnValues.value),
-          timestamp: Number(ev.returnValues.timestamp),
+          timestamp: ev.returnValues.timestamp,
           block: ev.blockNumber,
           logIndex: ev.logIndex,
         };
         this.prices[symbol].push(newPrice);
-        // Sort in-place, most recent timestamp first (in case events come out-of-order)
-        this.prices[symbol].sort((a, b) => b.timestamp - a.timestamp);
+        // Sort in-place, most recent block first (in case events come out-of-order)
+        this.prices[symbol].sort((a, b) => b.block - a.block);
         // Assume chain won't reorder more than 12 blocks, and trim prices array accordingly...
         // BUT always maintain at least 2 items in the array (new price and 1 other price)
         // in case the new price gets removed from the chain later on (need fallback)
