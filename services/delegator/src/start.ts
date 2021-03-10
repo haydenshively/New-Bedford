@@ -14,8 +14,8 @@ import uniswapAnchoredView from './contracts/UniswapAnchoredView';
 import PriceLedger from './PriceLedger';
 
 import StatefulComptroller from './StatefulComptroller';
-import StatefulPriceFeed from './StatefulPriceFeed';
-import StatefulCoinbaseReporter from './StatefulCoinbaseReporter';
+import StatefulPricesOnChain from './StatefulPricesOnChain';
+import StatefulPricesCoinbase from './StatefulPricesCoinbase';
 
 require('dotenv-safe').config();
 
@@ -33,8 +33,8 @@ const addressesList = new Set<string>([...addressesJSON.high_value, ...addresses
 const priceLedger = new PriceLedger();
 
 const statefulComptroller = new StatefulComptroller(provider, comptroller);
-const statefulPriceFeed = new StatefulPriceFeed(provider, priceLedger, openOraclePriceData, uniswapAnchoredView);
-const statefulCoinbaseReporter = new StatefulCoinbaseReporter(
+const statefulPricesOnChain = new StatefulPricesOnChain(provider, priceLedger, openOraclePriceData, uniswapAnchoredView);
+const statefulPricesCoinbase = new StatefulPricesCoinbase(
   priceLedger,
   process.env.COINBASE_ENDPOINT!,
   process.env.CB_ACCESS_KEY!,
@@ -44,15 +44,15 @@ const statefulCoinbaseReporter = new StatefulCoinbaseReporter(
 
 async function start() {
   await statefulComptroller.init();
-  await statefulPriceFeed.init();
-  await statefulCoinbaseReporter.init(120000);
+  await statefulPricesOnChain.init();
+  await statefulPricesCoinbase.init(120000);
 
   console.log(statefulComptroller.getCloseFactor().toFixed(0));
   console.log(statefulComptroller.getLiquidationIncentive().toFixed(0));
 
   symbols.forEach((symbol) => {
     console.log(
-      `${symbol} price is ${statefulPriceFeed
+      `${symbol} price is ${statefulPricesOnChain
         .getPrice(symbol)
         .value.div(1e6)
         .toFixed(3)} with a CF of ${statefulComptroller.getCollateralFactor(symbol).div(1e18).toFixed(2)}`,
