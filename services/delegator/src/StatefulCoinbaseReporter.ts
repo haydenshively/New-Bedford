@@ -2,37 +2,24 @@ import { FetchError } from 'node-fetch';
 
 import { Big } from '@goldenagellc/web3-blocks';
 
-import CoinbaseReporter from './CoinbaseReporter';
 import { CoinbaseKey, coinbaseKeyMap } from './types/CoinbaseKeys';
 import IPrice from './types/IPrice';
-import IPriceRange from './types/IPriceRange';
-import PriceList from './PriceList';
-
-interface PostableDatum {
-  key: CoinbaseKey;
-  message: string;
-  signature: string;
-}
-
-type TimestampMap = { [i: string]: PostableDatum };
-
-const UPDATE_FREQUENCY = 120000;
-const USD_VALUE: Big = Big('1000000');
-const SAI_PER_ETH = 0.005285;
+import CoinbaseReporter from './CoinbaseReporter';
+import PriceLedger from './PriceLedger';
 
 export default class StatefulCoinbaseReporter extends CoinbaseReporter {
-  private readonly bag: PriceList;
-  private readonly fetchInterval: number;
+  private readonly ledger: PriceLedger;
+  private fetchHandle: NodeJS.Timeout | null = null;
 
-  constructor(bag: PriceList, fetchInterval: number, coinbaseEndpoint: string, coinbaseKey: string, coinbaseSecret: string, coinbasePassphrase: string) {
+  constructor(ledger: PriceLedger, coinbaseEndpoint: string, coinbaseKey: string, coinbaseSecret: string, coinbasePassphrase: string) {
     super(coinbaseEndpoint, coinbaseKey, coinbaseSecret, coinbasePassphrase);
-    this.bag = bag;
-    this.fetchInterval = fetchInterval;
+    this.ledger = ledger;
   }
 
-  public async init(): Promise<void> {
+  public async init(fetchInterval = 120000): Promise<void> {
     await this.update();
-    setInterval(this.update.bind(this), UPDATE_FREQUENCY);
+    if (this.fetchHandle !== null) clearInterval(this.fetchHandle);
+    this.fetchHandle = setInterval(this.update.bind(this), fetchInterval);
   }
 
   private async update(): Promise<void> {
@@ -64,7 +51,7 @@ export default class StatefulCoinbaseReporter extends CoinbaseReporter {
 
         // Store
         const price: IPrice = { value: Big(value), timestamp: timestamp };
-        if (this.bag.append(knownKey, price, message, signature)) updatedKeys.push(knownKey);
+        if (this.ledger.append(knownKey, price, message, signature)) updatedKeys.push(knownKey);
       }
       return updatedKeys;
     } catch (e) {

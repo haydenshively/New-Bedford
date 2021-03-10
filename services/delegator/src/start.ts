@@ -11,7 +11,7 @@ import comptroller from './contracts/Comptroller';
 import openOraclePriceData from './contracts/OpenOraclePriceData';
 import uniswapAnchoredView from './contracts/UniswapAnchoredView';
 
-import PriceList from './PriceList';
+import PriceLedger from './PriceLedger';
 
 import StatefulComptroller from './StatefulComptroller';
 import StatefulPriceFeed from './StatefulPriceFeed';
@@ -30,13 +30,12 @@ const symbols: (keyof typeof CTokens)[] = <(keyof typeof CTokens)[]>Object.keys(
 import addressesJSON from './_borrowers.json';
 const addressesList = new Set<string>([...addressesJSON.high_value, ...addressesJSON.previously_liquidated]);
 
-const priceList = new PriceList();
+const priceLedger = new PriceLedger();
 
 const statefulComptroller = new StatefulComptroller(provider, comptroller);
-const statefulPriceFeed = new StatefulPriceFeed(provider, openOraclePriceData, uniswapAnchoredView);
+const statefulPriceFeed = new StatefulPriceFeed(provider, priceLedger, openOraclePriceData, uniswapAnchoredView);
 const statefulCoinbaseReporter = new StatefulCoinbaseReporter(
-  priceList,
-  120000,
+  priceLedger,
   process.env.COINBASE_ENDPOINT!,
   process.env.CB_ACCESS_KEY!,
   process.env.CB_ACCESS_SECRET!,
@@ -46,7 +45,7 @@ const statefulCoinbaseReporter = new StatefulCoinbaseReporter(
 async function start() {
   await statefulComptroller.init();
   await statefulPriceFeed.init();
-  await statefulCoinbaseReporter.init();
+  await statefulCoinbaseReporter.init(120000);
 
   console.log(statefulComptroller.getCloseFactor().toFixed(0));
   console.log(statefulComptroller.getLiquidationIncentive().toFixed(0));

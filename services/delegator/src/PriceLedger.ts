@@ -1,3 +1,5 @@
+import { Big } from '@goldenagellc/web3-blocks';
+
 import { CoinbaseKey } from './types/CoinbaseKeys';
 import IPrice from './types/IPrice';
 import IPriceRange from './types/IPriceRange';
@@ -10,7 +12,10 @@ interface PostableDatum {
 
 type TimestampMap = { [i: string]: PostableDatum };
 
-export default class PriceList {
+const USD_VALUE: Big = Big('1000000');
+const SAI_PER_ETH = 0.005285;
+
+export default class PriceLedger {
   private readonly prices: { [_ in CoinbaseKey]: IPriceRange | null } = {
     BAT: null,
     COMP: null,
@@ -78,21 +83,24 @@ export default class PriceList {
     return didUpdate;
   }
 
-  private resetPrices(key: CoinbaseKey): void {
+  private resetPrices(key: CoinbaseKey, maskToTimestamp: string): void {
     this.prices[key] = null;
-    this.priceHistories[key].forEach((price) => this.updateMinMax(key, price));
+    this.priceHistories[key].forEach((price) => {
+      if (Number(price.timestamp) < Number(maskToTimestamp)) return;
+      this.updateMinMax(key, price);
+    });
   }
 
-  private trimHistoryUpTo(key: CoinbaseKey, timestamp: string): void {
+  public cleanHistory(key: CoinbaseKey, delToTimestamp: string, maskToTimestamp: string): void {
     let i: number;
     for (i = 0; i < this.priceHistories[key].length; i += 1) {
       const ts = this.priceHistories[key][i].timestamp;
-      if (Number(ts) >= Number(timestamp)) break;
+      if (Number(ts) >= Number(delToTimestamp)) break;
 
-      delete this.postableData[key][timestamp];
+      delete this.postableData[key][delToTimestamp];
     }
     this.priceHistories[key].splice(0, i);
 
-    this.resetPrices(key);
+    this.resetPrices(key, maskToTimestamp);
   }
 }
