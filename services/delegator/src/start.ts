@@ -1,12 +1,21 @@
 import ipc from 'node-ipc';
 import { EventData } from 'web3-eth-contract';
+import winston from 'winston';
 
-import { Big, providerFor } from '@goldenagellc/web3-blocks';
+import { providerFor } from '@goldenagellc/web3-blocks';
 
-import ICompoundBorrower from './types/ICompoundBorrower';
 import { CTokens } from './types/CTokens';
-import cTokens from './contracts/CToken';
+
+import SlackHook from './logging/SlackHook';
+
 import comptroller from './contracts/Comptroller';
+import openOraclePriceData from './contracts/OpenOraclePriceData';
+import uniswapAnchoredView from './contracts/UniswapAnchoredView';
+
+import PriceLedger from './PriceLedger';
+import StatefulComptroller from './StatefulComptroller';
+import StatefulPricesOnChain from './StatefulPricesOnChain';
+import StatefulPricesCoinbase from './StatefulPricesCoinbase';
 
 require('dotenv-safe').config();
 
@@ -16,110 +25,45 @@ const provider = providerFor('mainnet', {
   envKeyPath: 'PROVIDER_IPC_PATH',
 });
 
+// configure winston
+winston.configure({
+  format: winston.format.combine(winston.format.splat(), winston.format.simple()),
+  transports: [
+    new winston.transports.Console({ handleExceptions: true }),
+    new winston.transports.File({
+      level: 'debug',
+      filename: 'delegator.log',
+      maxsize: 100000,
+    }),
+    new SlackHook(process.env.SLACK_WEBHOOK!, { level: 'info' }),
+  ],
+  exitOnError: false,
+});
+
 const symbols: (keyof typeof CTokens)[] = <(keyof typeof CTokens)[]>Object.keys(CTokens);
 
 import addressesJSON from './_borrowers.json';
 const addressesList = new Set<string>([...addressesJSON.high_value, ...addressesJSON.previously_liquidated]);
 
-let closeFactor: Big | null = null;
-let liquidationIncentive: Big | null = null;
-const collateralFactors: { -readonly [d in keyof typeof CTokens]: Big | null } = {
-  cBAT: null,
-  cCOMP: null,
-  cDAI: null,
-  cETH: null,
-  cREP: null,
-  cSAI: null,
-  cUNI: null,
-  cUSDC: null,
-  cUSDT: null,
-  cWBTC: null,
-  cZRX: null,
-};
+const priceLedger = new PriceLedger();
+
+const statefulComptroller = new StatefulComptroller(provider, comptroller);
+const statefulPricesOnChain = new StatefulPricesOnChain(provider, priceLedger, openOraclePriceData, uniswapAnchoredView);
+const statefulPricesCoinbase = new StatefulPricesCoinbase(
+  priceLedger,
+  process.env.COINBASE_ENDPOINT!,
+  process.env.CB_ACCESS_KEY!,
+  process.env.CB_ACCESS_SECRET!,
+  process.env.CB_ACCESS_PASSPHRASE!,
+);
 
 async function start() {
-  // CLOSE FACTOR
-  comptroller
-    .bindTo(provider)
-    .subscribeTo.NewCloseFactor('latest')
-    .on('connected', async (_id: string) => {
-      const x = await comptroller.closeFactor()(provider);
-      if (closeFactor === null) {
-        closeFactor = x;
-        console.log(`Fetch: close factor set to ${closeFactor.toFixed(0)}`);
-      }
-    })
-    .on('data', async (ev: EventData) => {
-      const x = ev.returnValues.newCloseFactorMantissa;
-      closeFactor = Big(x);
-      console.log(`Event: close factor set to ${x}`);
-    })
-    .on('changed', async (ev: EventData) => {
-      const x = ev.returnValues.oldCloseFactorMantissa;
-      closeFactor = Big(x);
-      console.log(`Event: close factor reverted to ${x}`);
-    })
-    .on('error', console.log);
+  await statefulComptroller.init();
+  await statefulPricesOnChain.init();
+  await statefulPricesCoinbase.init(4000);
 
-  // LIQUIDATION INCENTIVE
-  comptroller
-    .bindTo(provider)
-    .subscribeTo.NewLiquidationIncentive('latest')
-    .on('connected', async (_id: string) => {
-      const x = await comptroller.liquidationIncentive()(provider);
-      if (liquidationIncentive === null) {
-        liquidationIncentive = x;
-        console.log(`Fetch: liquidation incentive set to ${x.toFixed(0)}`);
-      }
-    })
-    .on('data', (ev: EventData) => {
-      const x = ev.returnValues.newLiquidationIncentiveMantissa;
-      liquidationIncentive = Big(x);
-      console.log(`Event: liquidation incentive set to ${x}`);
-    })
-    .on('changed', (ev: EventData) => {
-      const x = ev.returnValues.oldLiquidationIncentiveMantissa;
-      liquidationIncentive = Big(x);
-      console.log(`Event: liquidation incentive reverted to ${x}`);
-    })
-    .on('error', console.log);
-
-  // COLLATERAL FACTORS
-  comptroller
-    .bindTo(provider)
-    .subscribeTo.NewCollateralFactor('latest')
-    .on('connected', (_id: string) => {
-      symbols.forEach(async (symbol) => {
-        const x = await comptroller.collateralFactorOf(CTokens[symbol])(provider);
-        if (collateralFactors[symbol] === null) {
-          collateralFactors[symbol] = x;
-          console.log(`Fetch: ${symbol} collateral factor set to ${x.toFixed(0)}`);
-        }
-      });
-    })
-    .on('data', (ev: EventData) => {
-      const address: string = ev.returnValues.cToken;
-      const x = ev.returnValues.newCollateralFactorMantissa;
-
-      symbols.forEach((symbol) => {
-        if (CTokens[symbol] === address) {
-          collateralFactors[symbol] = Big(x);
-          console.log(`Fetch: ${symbol} collateral factor set to ${x.toFixed(0)}`);
-        }
-      });
-    })
-    .on('changed', (ev: EventData) => {
-      const address: string = ev.returnValues.cToken;
-      const x = ev.returnValues.oldCollateralFactorMantissa;
-
-      symbols.forEach((symbol) => {
-        if (CTokens[symbol] === address) {
-          collateralFactors[symbol] = Big(x);
-          console.log(`Fetch: ${symbol} collateral factor set to ${x.toFixed(0)}`);
-        }
-      });
-    })
-    .on('error', console.log);
+  console.log(statefulComptroller.getCloseFactor().toFixed(0));
+  console.log(statefulComptroller.getLiquidationIncentive().toFixed(0));
 }
 
 // const borrowers: ICompoundBorrower[] = [];
@@ -129,15 +73,15 @@ async function start() {
 
 start();
 
-symbols.forEach((symbol) => {
-  const accrueInterestEmitter = cTokens[symbol].bindTo(provider).subscribeTo.AccrueInterest('latest');
+// symbols.forEach((symbol) => {
+//   const accrueInterestEmitter = cTokens[symbol].bindTo(provider).subscribeTo.AccrueInterest('latest');
 
-  accrueInterestEmitter
-    // .on('connected', (id: string) => console.log(`Connected ${symbol} at ${id}`))
-    // .on('data', console.log)
-    .on('changed', console.log);
-  // .on('error', console.log);
-});
+//   accrueInterestEmitter
+//     .on('connected', (id: string) => console.log(`Connected ${symbol} at ${id}`))
+//     .on('data', console.log)
+//     .on('changed', console.log)
+//     .on('error', console.log);
+// });
 
 // ipc.config.appspace = 'newbedford.';
 // ipc.config.id = 'delegator';

@@ -39,7 +39,7 @@ winston.configure({
       filename: 'txmanager.log',
       maxsize: 100000,
     }),
-    new SlackHook(String(process.env.SLACK_WEBHOOK), { level: 'info' }),
+    new SlackHook(process.env.SLACK_WEBHOOK!, { level: 'info' }),
   ],
   exitOnError: false,
 });
@@ -56,8 +56,8 @@ ethSub.register(latencyWatch);
 // create queue
 const wallet = new Wallet(
   provider,
-  String(process.env.ACCOUNT_ADDRESS_CALLER),
-  String(process.env.ACCOUNT_SECRET_CALLER),
+  process.env.ACCOUNT_ADDRESS_CALLER!,
+  process.env.ACCOUNT_SECRET_CALLER!,
 );
 const queue = new IncognitoQueue(wallet);
 ethSub.register(queue);
