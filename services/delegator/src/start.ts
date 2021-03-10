@@ -1,18 +1,18 @@
 import ipc from 'node-ipc';
 import { EventData } from 'web3-eth-contract';
+import winston from 'winston';
 
-import { Big, providerFor } from '@goldenagellc/web3-blocks';
+import { providerFor } from '@goldenagellc/web3-blocks';
 
-import ICompoundBorrower from './types/ICompoundBorrower';
 import { CTokens } from './types/CTokens';
-import cTokens from './contracts/CToken';
+
+import SlackHook from './logging/SlackHook';
 
 import comptroller from './contracts/Comptroller';
 import openOraclePriceData from './contracts/OpenOraclePriceData';
 import uniswapAnchoredView from './contracts/UniswapAnchoredView';
 
 import PriceLedger from './PriceLedger';
-
 import StatefulComptroller from './StatefulComptroller';
 import StatefulPricesOnChain from './StatefulPricesOnChain';
 import StatefulPricesCoinbase from './StatefulPricesCoinbase';
@@ -23,6 +23,21 @@ require('dotenv-safe').config();
 const provider = providerFor('mainnet', {
   type: 'IPC',
   envKeyPath: 'PROVIDER_IPC_PATH',
+});
+
+// configure winston
+winston.configure({
+  format: winston.format.combine(winston.format.splat(), winston.format.simple()),
+  transports: [
+    new winston.transports.Console({ handleExceptions: true }),
+    new winston.transports.File({
+      level: 'debug',
+      filename: 'delegator.log',
+      maxsize: 100000,
+    }),
+    new SlackHook(process.env.SLACK_WEBHOOK!, { level: 'info' }),
+  ],
+  exitOnError: false,
 });
 
 const symbols: (keyof typeof CTokens)[] = <(keyof typeof CTokens)[]>Object.keys(CTokens);
@@ -45,19 +60,10 @@ const statefulPricesCoinbase = new StatefulPricesCoinbase(
 async function start() {
   await statefulComptroller.init();
   await statefulPricesOnChain.init();
-  await statefulPricesCoinbase.init(120000);
+  await statefulPricesCoinbase.init(4000);
 
   console.log(statefulComptroller.getCloseFactor().toFixed(0));
   console.log(statefulComptroller.getLiquidationIncentive().toFixed(0));
-
-  symbols.forEach((symbol) => {
-    console.log(
-      `${symbol} price is ${statefulPricesOnChain
-        .getPrice(symbol)
-        .value.div(1e6)
-        .toFixed(3)} with a CF of ${statefulComptroller.getCollateralFactor(symbol).div(1e18).toFixed(2)}`,
-    );
-  });
 }
 
 // const borrowers: ICompoundBorrower[] = [];

@@ -1,4 +1,5 @@
 import { FetchError } from 'node-fetch';
+import winston from 'winston';
 
 import { Big } from '@goldenagellc/web3-blocks';
 
@@ -7,11 +8,17 @@ import IPrice from './types/IPrice';
 import CoinbaseReporter from './CoinbaseReporter';
 import PriceLedger from './PriceLedger';
 
-export default class StatefulCoinbaseReporter extends CoinbaseReporter {
+export default class StatefulPricesCoinbase extends CoinbaseReporter {
   private readonly ledger: PriceLedger;
   private fetchHandle: NodeJS.Timeout | null = null;
 
-  constructor(ledger: PriceLedger, coinbaseEndpoint: string, coinbaseKey: string, coinbaseSecret: string, coinbasePassphrase: string) {
+  constructor(
+    ledger: PriceLedger,
+    coinbaseEndpoint: string,
+    coinbaseKey: string,
+    coinbaseSecret: string,
+    coinbasePassphrase: string,
+  ) {
     super(coinbaseEndpoint, coinbaseKey, coinbaseSecret, coinbasePassphrase);
     this.ledger = ledger;
   }
@@ -25,14 +32,8 @@ export default class StatefulCoinbaseReporter extends CoinbaseReporter {
   private async update(): Promise<void> {
     const updatedKeys = await this.fetch();
 
-    updatedKeys.forEach((key) => {
-      const min = this.prices[key]!.min.value.div('1e+6').toFixed(2);
-      const max = this.prices[key]!.max.value.div('1e+6').toFixed(2);
-      const timespan = Math.abs(Number(this.prices[key]!.max.timestamp) - Number(this.prices[key]!.min.timestamp));
-      console.log(`${key} | $${min} <-> $${max} over the past ${(timespan / 3600).toFixed(2)} hours`);
-    });
-
     // TODO: trigger callbacks
+    if (updatedKeys.length > 0) winston.info(this.ledger.summaryText);
   }
 
   private async fetch(): Promise<CoinbaseKey[]> {
@@ -43,7 +44,7 @@ export default class StatefulCoinbaseReporter extends CoinbaseReporter {
       for (let i = 0; i < report.messages.length; i += 1) {
         const message = report.messages[i];
         const signature = report.signatures[i];
-        const { timestamp, key, price: value } = StatefulCoinbaseReporter.decode(message);
+        const { timestamp, key, price: value } = StatefulPricesCoinbase.decode(message);
 
         // Skip if symbol is unknown
         if (!Object.keys(coinbaseKeyMap).includes(key)) continue;

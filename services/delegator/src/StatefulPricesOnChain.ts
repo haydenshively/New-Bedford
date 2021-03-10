@@ -1,5 +1,6 @@
 import { EventData } from 'web3-eth-contract';
 import Web3 from 'web3';
+import winston from 'winston';
 
 import { Big } from '@goldenagellc/web3-blocks';
 
@@ -15,7 +16,7 @@ interface IOnChainPrice extends IPrice {
   logIndex: number;
 }
 
-export default class StatefulPriceFeed {
+export default class StatefulPricesOnChain {
   private readonly provider: Web3;
   private readonly ledger: PriceLedger;
   private readonly openOraclePriceData: OpenOraclePriceData;
@@ -94,9 +95,7 @@ export default class StatefulPriceFeed {
         if (idx !== -1) this.prices[knownKey].splice(Math.max(idx, 2));
 
         this.propogateToLedger(knownKey);
-
-        console.log(`${knownKey} price is now at $${newPrice.value.div('1e+6').toFixed(2)}`);
-        console.log(`${knownKey} price array has length ${this.prices[knownKey].length}`);
+        winston.info(`📈 ${knownKey} price posted to chain!\n${this.ledger.summaryTextFor(knownKey)}`);
       })
       .on('changed', (ev: EventData) => {
         if (!Object.keys(coinbaseKeyMap).includes(ev.returnValues.key)) return;
@@ -106,8 +105,7 @@ export default class StatefulPriceFeed {
         if (idx !== -1) this.prices[knownKey].splice(idx, 1);
 
         this.propogateToLedger(knownKey);
-
-        console.log(`${knownKey} price data was changed by chain reordering`);
+        winston.info(`⚠️ ${knownKey} price suffered chain reorganization!\n${this.ledger.summaryTextFor(knownKey)}`);
       })
       .on('error', console.log);
   }
