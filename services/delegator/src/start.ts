@@ -13,6 +13,7 @@ import priceFeed from './contracts/PriceFeed';
 
 import StatefulComptroller from './StatefulComptroller';
 import StatefulPriceFeed from './StatefulPriceFeed';
+import StatefulCoinbaseReporter from './StatefulCoinbaseReporter';
 
 require('dotenv-safe').config();
 
@@ -29,25 +30,29 @@ const addressesList = new Set<string>([...addressesJSON.high_value, ...addresses
 
 const statefulComptroller = new StatefulComptroller(provider, comptroller);
 const statefulPriceFeed = new StatefulPriceFeed(provider, priceData, priceFeed);
+const statefulCoinbaseReporter = new StatefulCoinbaseReporter(
+  process.env.COINBASE_ENDPOINT!,
+  process.env.CB_ACCESS_KEY!,
+  process.env.CB_ACCESS_SECRET!,
+  process.env.CB_ACCESS_PASSPHRASE!,
+);
 
 async function start() {
   await statefulComptroller.init();
   await statefulPriceFeed.init();
+  await statefulCoinbaseReporter.init();
 
   console.log(statefulComptroller.getCloseFactor().toFixed(0));
   console.log(statefulComptroller.getLiquidationIncentive().toFixed(0));
 
-  const prices = statefulPriceFeed.getPrices();
-  const collateralFactors = statefulComptroller.getCollateralFactors();
-
-  for (let symbol in prices) {
+  symbols.forEach((symbol) => {
     console.log(
-      // @ts-expect-error
-      `${symbol} price is ${prices[symbol].value.div(1e6).toFixed(3)} with a CF of ${collateralFactors[symbol]
-        .div(1e18)
-        .toFixed(2)}`,
+      `${symbol} price is ${statefulPriceFeed
+        .getPrice(symbol)
+        .value.div(1e6)
+        .toFixed(3)} with a CF of ${statefulComptroller.getCollateralFactor(symbol).div(1e18).toFixed(2)}`,
     );
-  }
+  });
 }
 
 // const borrowers: ICompoundBorrower[] = [];
@@ -57,15 +62,15 @@ async function start() {
 
 start();
 
-symbols.forEach((symbol) => {
-  const accrueInterestEmitter = cTokens[symbol].bindTo(provider).subscribeTo.AccrueInterest('latest');
+// symbols.forEach((symbol) => {
+//   const accrueInterestEmitter = cTokens[symbol].bindTo(provider).subscribeTo.AccrueInterest('latest');
 
-  accrueInterestEmitter
-    // .on('connected', (id: string) => console.log(`Connected ${symbol} at ${id}`))
-    // .on('data', console.log)
-    .on('changed', console.log);
-  // .on('error', console.log);
-});
+//   accrueInterestEmitter
+//     .on('connected', (id: string) => console.log(`Connected ${symbol} at ${id}`))
+//     .on('data', console.log)
+//     .on('changed', console.log)
+//     .on('error', console.log);
+// });
 
 // ipc.config.appspace = 'newbedford.';
 // ipc.config.id = 'delegator';

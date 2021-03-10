@@ -12,7 +12,10 @@ export enum CTokens {
   cZRX = '0xB3319f5D18Bc0D84dD1b4825Dcde5d5f7266d407',
 }
 
-export const CTokenCreationBlocks: { [_ in keyof typeof CTokens]: number } = {
+export type CTokenSymbol = keyof typeof CTokens;
+export const cTokenSymbols = <CTokenSymbol[]>Object.keys(CTokens);
+
+export const CTokenCreationBlocks: { [_ in CTokenSymbol]: number } = {
   cBAT: 7710735,
   cCOMP: 10960099,
   cDAI: 8983575,
@@ -26,7 +29,7 @@ export const CTokenCreationBlocks: { [_ in keyof typeof CTokens]: number } = {
   cZRX: 7710733,
 };
 
-export const CTokenUnderlyingDecimals: { [_ in keyof typeof CTokens]: number } = {
+export const CTokenUnderlyingDecimals: { [_ in CTokenSymbol]: number } = {
   cBAT: 18,
   cCOMP: 18,
   cDAI: 18,
@@ -39,5 +42,3 @@ export const CTokenUnderlyingDecimals: { [_ in keyof typeof CTokens]: number } =
   cWBTC: 8,
   cZRX: 18,
 };
-
-export const symbols = <(keyof typeof CTokens)[]>Object.keys(CTokens);

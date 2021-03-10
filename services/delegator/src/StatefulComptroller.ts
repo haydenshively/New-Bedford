@@ -4,7 +4,7 @@ import Web3 from 'web3';
 import { Big } from '@goldenagellc/web3-blocks';
 
 import { Comptroller } from './contracts/Comptroller';
-import { CTokens, symbols } from './types/CTokens';
+import { CTokens, CTokenSymbol, cTokenSymbols } from './types/CTokens';
 
 interface BlockchainNumber {
   value: Big;
@@ -18,7 +18,7 @@ export default class StatefulComptroller {
 
   private closeFactor: BlockchainNumber | null = null;
   private liquidationIncentive: BlockchainNumber | null = null;
-  private collateralFactors: { -readonly [_ in keyof typeof CTokens]: BlockchainNumber | null } = {
+  private collateralFactors: { -readonly [_ in CTokenSymbol]: BlockchainNumber | null } = {
     cBAT: null,
     cCOMP: null,
     cDAI: null,
@@ -61,7 +61,7 @@ export default class StatefulComptroller {
     return this.liquidationIncentive?.value;
   }
 
-  public getCollateralFactor(symbol: keyof typeof CTokens): Big | null {
+  public getCollateralFactor(symbol: CTokenSymbol): Big | null {
     return this.collateralFactors[symbol]?.value;
   }
 
@@ -82,7 +82,7 @@ export default class StatefulComptroller {
   }
 
   private fetchCollateralFactors(block: number): Promise<void>[] {
-    return symbols.map(async (symbol) => {
+    return cTokenSymbols.map(async (symbol) => {
       this.collateralFactors[symbol] = {
         value: await this.comptroller.collateralFactorOf(CTokens[symbol])(this.provider, block),
         block: block,
@@ -165,7 +165,7 @@ export default class StatefulComptroller {
       .on('data', (ev: EventData) => {
         const address: string = ev.returnValues.cToken;
 
-        symbols.forEach((symbol) => {
+        cTokenSymbols.forEach((symbol) => {
           if (CTokens[symbol] === address) {
             const collateralFactor = this.collateralFactors[symbol]!;
             if (!StatefulComptroller.shouldAllowData(ev, collateralFactor)) return;
@@ -179,7 +179,7 @@ export default class StatefulComptroller {
       .on('changed', (ev: EventData) => {
         const address: string = ev.returnValues.cToken;
 
-        symbols.forEach((symbol) => {
+        cTokenSymbols.forEach((symbol) => {
           if (CTokens[symbol] === address) {
             const collateralFactor = this.collateralFactors[symbol]!;
             if (!StatefulComptroller.shouldAllowDataChange(ev, collateralFactor)) return;

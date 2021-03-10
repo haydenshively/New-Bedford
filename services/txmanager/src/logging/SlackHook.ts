@@ -1,4 +1,4 @@
-import nfetch, { Response } from 'node-fetch';
+import nfetch from 'node-fetch';
 import winston from 'winston';
 import Transport from 'winston-transport';
 

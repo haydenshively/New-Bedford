@@ -5,21 +5,8 @@ import { Big } from '@goldenagellc/web3-blocks';
 
 import { PriceData } from './contracts/PriceData';
 import { PriceFeed } from './contracts/PriceFeed';
-import { CTokens, CTokenUnderlyingDecimals as decimals, symbols } from './types/CTokens';
-
-const KEY_SYMBOL: { [i: string]: keyof typeof CTokens } = {
-  BAT: 'cBAT',
-  COMP: 'cCOMP',
-  DAI: 'cDAI',
-  ETH: 'cETH',
-  REP: 'cREP',
-  SAI: 'cSAI',
-  UNI: 'cUNI',
-  USDC: 'cUSDC',
-  USDT: 'cUSDT',
-  BTC: 'cWBTC',
-  ZRX: 'cZRX',
-};
+import { CoinbaseKey, coinbaseKeyMap } from './types/CoinbaseKeys';
+import { CTokens, CTokenSymbol, cTokenSymbols, CTokenUnderlyingDecimals as decimals } from './types/CTokens';
 
 interface Price {
   value: Big;
@@ -33,7 +20,7 @@ export default class StatefulPriceFeed {
   private readonly priceData: PriceData;
   private readonly priceFeed: PriceFeed;
 
-  private prices: { -readonly [_ in keyof typeof CTokens]: Price[] } = {
+  private prices: { [_ in CTokenSymbol]: Price[] } = {
     cBAT: [],
     cCOMP: [],
     cDAI: [],
@@ -60,12 +47,12 @@ export default class StatefulPriceFeed {
     this.subscribeToPrices(block);
   }
 
-  public getPrice(symbol: keyof typeof CTokens): Price {
+  public getPrice(symbol: CTokenSymbol): Price {
     return this.prices[symbol][0];
   }
 
   private fetchPrices(block: number): Promise<void>[] {
-    return symbols.map(async (symbol) => {
+    return cTokenSymbols.map(async (symbol) => {
       const price = await this.priceFeed.getUnderlyingPrice(CTokens[symbol])(this.provider, block);
       this.prices[symbol].push({
         value: price.div(`1e+${(36 - 6 - decimals[symbol]).toFixed(0)}`),
@@ -84,8 +71,8 @@ export default class StatefulPriceFeed {
         console.log(`StatefulPriceFeed: Bound prices to ${id}`);
       })
       .on('data', (ev: EventData) => {
-        if (!Object.keys(KEY_SYMBOL).includes(ev.returnValues.key)) return;
-        const symbol = KEY_SYMBOL[ev.returnValues.key];
+        if (!Object.keys(coinbaseKeyMap).includes(ev.returnValues.key)) return;
+        const symbol = coinbaseKeyMap[ev.returnValues.key as CoinbaseKey];
 
         // Store the new price
         const newPrice = {
@@ -103,12 +90,12 @@ export default class StatefulPriceFeed {
         const idx = this.prices[symbol].findIndex((p) => newPrice.block - p.block > 12);
         if (idx !== -1) this.prices[symbol].splice(Math.max(idx, 2));
 
-        console.log(`${symbol} price is now at $${newPrice.value.div('1e+6').toFixed(0)}`);
+        console.log(`${symbol} price is now at $${newPrice.value.div('1e+6').toFixed(2)}`);
         console.log(`${symbol} price array has length ${this.prices[symbol].length}`);
       })
       .on('changed', (ev: EventData) => {
-        if (!Object.keys(KEY_SYMBOL).includes(ev.returnValues.key)) return;
-        const symbol = KEY_SYMBOL[ev.returnValues.key];
+        if (!Object.keys(coinbaseKeyMap).includes(ev.returnValues.key)) return;
+        const symbol = coinbaseKeyMap[ev.returnValues.key as CoinbaseKey];
 
         const idx = this.prices[symbol].findIndex((p) => p.block === ev.blockNumber && p.logIndex === ev.logIndex);
         if (idx !== -1) this.prices[symbol].splice(idx, 1);
