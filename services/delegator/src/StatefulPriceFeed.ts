@@ -3,8 +3,8 @@ import Web3 from 'web3';
 
 import { Big } from '@goldenagellc/web3-blocks';
 
-import { PriceData } from './contracts/PriceData';
-import { PriceFeed } from './contracts/PriceFeed';
+import { OpenOraclePriceData } from './contracts/OpenOraclePriceData';
+import { UniswapAnchoredView } from './contracts/UniswapAnchoredView';
 import { CoinbaseKey, coinbaseKeyMap } from './types/CoinbaseKeys';
 import { CTokens, CTokenSymbol, cTokenSymbols, CTokenUnderlyingDecimals as decimals } from './types/CTokens';
 import IPrice from './types/IPrice';
@@ -16,8 +16,8 @@ interface IOnChainPrice extends IPrice {
 
 export default class StatefulPriceFeed {
   private readonly provider: Web3;
-  private readonly priceData: PriceData;
-  private readonly priceFeed: PriceFeed;
+  private readonly openOraclePriceData: OpenOraclePriceData;
+  private readonly uniswapAnchoredView: UniswapAnchoredView;
 
   private prices: { [_ in CTokenSymbol]: IOnChainPrice[] } = {
     cBAT: [],
@@ -33,10 +33,10 @@ export default class StatefulPriceFeed {
     cZRX: [],
   };
 
-  constructor(provider: Web3, priceData: PriceData, priceFeed: PriceFeed) {
+  constructor(provider: Web3, openOraclePriceData: OpenOraclePriceData, uniswapAnchoredView: UniswapAnchoredView) {
     this.provider = provider;
-    this.priceData = priceData;
-    this.priceFeed = priceFeed;
+    this.openOraclePriceData = openOraclePriceData;
+    this.uniswapAnchoredView = uniswapAnchoredView;
   }
 
   public async init(): Promise<void> {
@@ -52,7 +52,7 @@ export default class StatefulPriceFeed {
 
   private fetchPrices(block: number): Promise<void>[] {
     return cTokenSymbols.map(async (symbol) => {
-      const price = await this.priceFeed.getUnderlyingPrice(CTokens[symbol])(this.provider, block);
+      const price = await this.uniswapAnchoredView.getUnderlyingPrice(CTokens[symbol])(this.provider, block);
       this.prices[symbol].push({
         value: price.div(`1e+${(36 - 6 - decimals[symbol]).toFixed(0)}`),
         timestamp: '0',
@@ -63,7 +63,7 @@ export default class StatefulPriceFeed {
   }
 
   private subscribeToPrices(block: number): void {
-    this.priceData
+    this.openOraclePriceData
       .bindTo(this.provider)
       .subscribeTo.Write(block)
       .on('connected', (id: string) => {

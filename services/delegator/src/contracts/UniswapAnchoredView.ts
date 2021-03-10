@@ -6,15 +6,15 @@ import { CTokens } from '../types/CTokens';
 
 import abi from './abis/uniswapanchoredview.json';
 
-export enum PriceFeedEvents {
+export enum UniswapAnchoredViewEvents {
   AnchorPriceUpdated = 'AnchorPriceUpdated',
   PriceUpdated = 'PriceUpdated',
   UniswapWindowUpdated = 'UniswapWindowUpdated',
 }
 
-export class PriceFeed extends BindableContract<typeof PriceFeedEvents> {
+export class UniswapAnchoredView extends BindableContract<typeof UniswapAnchoredViewEvents> {
   constructor(address: string, creationBlock: number) {
-    super(address, abi as Web3Utils.AbiItem[], PriceFeedEvents, creationBlock);
+    super(address, abi as Web3Utils.AbiItem[], UniswapAnchoredViewEvents, creationBlock);
   }
 
   public anchorPeriod(): ContractCaller<Big> {
@@ -38,6 +38,6 @@ export class PriceFeed extends BindableContract<typeof PriceFeedEvents> {
   }
 }
 
-const priceFeed = new PriceFeed('0x922018674c12a7F0D394ebEEf9B58F186CdE13c1', 10921522);
+const uniswapAnchoredView = new UniswapAnchoredView('0x922018674c12a7F0D394ebEEf9B58F186CdE13c1', 10921522);
 
-export default priceFeed;
+export default uniswapAnchoredView;

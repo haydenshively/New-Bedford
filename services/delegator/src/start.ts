@@ -8,8 +8,10 @@ import { CTokens } from './types/CTokens';
 import cTokens from './contracts/CToken';
 
 import comptroller from './contracts/Comptroller';
-import priceData from './contracts/PriceData';
-import priceFeed from './contracts/PriceFeed';
+import openOraclePriceData from './contracts/OpenOraclePriceData';
+import uniswapAnchoredView from './contracts/UniswapAnchoredView';
+
+import PriceList from './PriceList';
 
 import StatefulComptroller from './StatefulComptroller';
 import StatefulPriceFeed from './StatefulPriceFeed';
@@ -28,9 +30,13 @@ const symbols: (keyof typeof CTokens)[] = <(keyof typeof CTokens)[]>Object.keys(
 import addressesJSON from './_borrowers.json';
 const addressesList = new Set<string>([...addressesJSON.high_value, ...addressesJSON.previously_liquidated]);
 
+const priceList = new PriceList();
+
 const statefulComptroller = new StatefulComptroller(provider, comptroller);
-const statefulPriceFeed = new StatefulPriceFeed(provider, priceData, priceFeed);
+const statefulPriceFeed = new StatefulPriceFeed(provider, openOraclePriceData, uniswapAnchoredView);
 const statefulCoinbaseReporter = new StatefulCoinbaseReporter(
+  priceList,
+  120000,
   process.env.COINBASE_ENDPOINT!,
   process.env.CB_ACCESS_KEY!,
   process.env.CB_ACCESS_SECRET!,
