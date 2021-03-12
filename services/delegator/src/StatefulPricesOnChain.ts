@@ -94,8 +94,10 @@ export default class StatefulPricesOnChain {
         const idx = this.prices[knownKey].findIndex((p) => newPrice.block - p.block > 12);
         if (idx !== -1) this.prices[knownKey].splice(Math.max(idx, 2));
 
+        const summaryBefore = this.ledger.summaryTextFor(knownKey)?.replace(knownKey, 'Before');
         this.propogateToLedger(knownKey);
-        winston.info(`📈 ${knownKey} price posted to chain!\n${this.ledger.summaryTextFor(knownKey)}`);
+        const summaryAfter = this.ledger.summaryTextFor(knownKey)?.replace(knownKey, 'After');
+        winston.info(`📈 ${knownKey} price posted to chain!\n${summaryBefore}\n${summaryAfter}`);
       })
       .on('changed', (ev: EventData) => {
         if (!Object.keys(coinbaseKeyMap).includes(ev.returnValues.key)) return;
@@ -104,8 +106,10 @@ export default class StatefulPricesOnChain {
         const idx = this.prices[knownKey].findIndex((p) => p.block === ev.blockNumber && p.logIndex === ev.logIndex);
         if (idx !== -1) this.prices[knownKey].splice(idx, 1);
 
+        const summaryBefore = this.ledger.summaryTextFor(knownKey)?.replace(knownKey, 'Before');
         this.propogateToLedger(knownKey);
-        winston.info(`⚠️ ${knownKey} price suffered chain reorganization!\n${this.ledger.summaryTextFor(knownKey)}`);
+        const summaryAfter = this.ledger.summaryTextFor(knownKey)?.replace(knownKey, 'After');
+        winston.info(`⚠️ ${knownKey} price suffered chain reorganization!\n${summaryBefore}\n${summaryAfter}`);
       })
       .on('error', console.log);
   }

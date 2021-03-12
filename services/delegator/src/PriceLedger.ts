@@ -1,7 +1,8 @@
 import { Big } from '@goldenagellc/web3-blocks';
 
 import { CoinbaseKey } from './types/CoinbaseKeys';
-import { CTokenSymbol } from './types/CTokens';
+import { CTokenSymbol, CTokenCoinbaseKeys } from './types/CTokens';
+import IPostablePriceFormat from './types/IPostablePriceFormat';
 import IPrice from './types/IPrice';
 import IPriceRange from './types/IPriceRange';
 
@@ -73,6 +74,37 @@ export default class PriceLedger {
     const maxAge = ((now - Number(price.max.timestamp)) / 60).toFixed(0);
 
     return `*${key}:*\n\tmin: $${min} (${minAge} min ago)\n\tmax: $${max} (${maxAge} min ago)`;
+  }
+
+  public getPostableFormat(symbols: CTokenSymbol[], edges: ('min' | 'max')[]): IPostablePriceFormat | null {
+    let didFindNull = false;
+
+    const formatted: IPostablePriceFormat = {
+      messages: [],
+      signatures: [],
+      symbols: [],
+    };
+
+    symbols.forEach((symbol, i) => {
+      const key = CTokenCoinbaseKeys[symbol];
+      if (key === null) return;
+
+      const prices = this.prices[key];
+      if (prices === null) {
+        didFindNull = true;
+        return;
+      }
+
+      const timestamp = prices[edges[i]].timestamp;
+      const postableData = this.postableData[key][timestamp];
+
+      formatted.messages.push(postableData.message);
+      formatted.signatures.push(postableData.signature);
+      formatted.signatures.push(postableData.key); // should equal local `key`
+    });
+
+    if (didFindNull) return null;
+    return formatted;
   }
 
   public getPrices(symbol: CTokenSymbol): { min: Big | null; max: Big | null } {

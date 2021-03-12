@@ -33,7 +33,7 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
     const updatedKeys = await this.fetch();
 
     // TODO: trigger callbacks
-    if (updatedKeys.length > 0) winston.info(this.ledger.summaryText);
+    // if (updatedKeys.length > 0) winston.info(this.ledger.summaryText);
   }
 
   private async fetch(): Promise<CoinbaseKey[]> {

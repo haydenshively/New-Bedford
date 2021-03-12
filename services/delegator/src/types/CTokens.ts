@@ -1,3 +1,5 @@
+import { CoinbaseKey } from './CoinbaseKeys';
+
 export enum CTokens {
   cBAT = '0x6C8c6b02E7b2BE14d4fA6022Dfd6d75921D90E4E',
   cCOMP = '0x70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4',
@@ -41,4 +43,18 @@ export const CTokenUnderlyingDecimals: { [_ in CTokenSymbol]: number } = {
   cUSDT: 6,
   cWBTC: 8,
   cZRX: 18,
+};
+
+export const CTokenCoinbaseKeys: { [_ in CTokenSymbol]: CoinbaseKey | null } = {
+  cBAT: 'BAT',
+  cCOMP: 'COMP',
+  cDAI: 'DAI',
+  cETH: 'ETH',
+  cREP: 'REP',
+  cSAI: null,
+  cUNI: 'UNI',
+  cUSDC: null,
+  cUSDT: null,
+  cWBTC: 'BTC',
+  cZRX: 'ZRX',
 };
