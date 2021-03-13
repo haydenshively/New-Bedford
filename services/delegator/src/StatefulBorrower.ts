@@ -1,5 +1,6 @@
 import { EventData } from 'web3-eth-contract';
 import Web3 from 'web3';
+import winston from 'winston';
 
 import { Big } from '@goldenagellc/web3-blocks';
 
@@ -25,7 +26,7 @@ export default class StatefulBorrower extends Borrower {
       console.warn('Already initialized borrower. Aborting!');
       return;
     }
-    
+
     let didInit = true;
     for (let symbol of cTokenSymbols) {
       const snapshot = await cTokens[symbol].getAccountSnapshot(this.address)(provider, this.fetchBlock);
@@ -37,7 +38,7 @@ export default class StatefulBorrower extends Borrower {
       const position = this.positions[symbol];
       position.supply = position.supply.plus(snapshot.cTokenBalance);
       position.borrow = position.borrow.plus(snapshot.borrowBalance);
-      
+
       const borrowIndex = await cTokens[symbol].borrowIndex()(provider, this.fetchBlock);
       if (borrowIndex.gt(position.borrowIndex)) position.borrowIndex = borrowIndex;
     }
@@ -47,72 +48,97 @@ export default class StatefulBorrower extends Borrower {
   public onMint(event: EventData, undo = false): void {
     if (event.blockNumber <= this.fetchBlock) return;
 
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
+    const symbol = this.getSymbolFor(event.address);
+    if (symbol === null) return;
+    const position = this.positions[symbol];
 
-    if (undo) position.supply = position.supply.minus(event.returnValues.mintTokens);
-    else position.supply = position.supply.plus(event.returnValues.mintTokens);
+    if (undo) {
+      position.supply = position.supply.minus(event.returnValues.mintTokens);
+      winston.info(`🪙 *${symbol} Mint* by ${this.address.slice(2, 8)} removed from chain`);
+    } else {
+      position.supply = position.supply.plus(event.returnValues.mintTokens);
+      winston.info(`🪙 *${symbol} Mint* by ${this.address.slice(2, 8)}`);
+    }
   }
 
   public onRedeem(event: EventData, undo = false): void {
     if (event.blockNumber <= this.fetchBlock) return;
 
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
+    const symbol = this.getSymbolFor(event.address);
+    if (symbol === null) return;
+    const position = this.positions[symbol];
 
-    if (undo) position.supply = position.supply.plus(event.returnValues.redeemTokens);
-    else position.supply = position.supply.minus(event.returnValues.redeemTokens);
+    if (undo) {
+      position.supply = position.supply.plus(event.returnValues.redeemTokens);
+      winston.info(`🪙 *${symbol} Redeem* by ${this.address.slice(2, 8)} removed from chain`);
+    } else {
+      position.supply = position.supply.minus(event.returnValues.redeemTokens);
+      winston.info(`🪙 *${symbol} Redeem* by ${this.address.slice(2, 8)}`);
+    }
   }
 
   public onBorrow(event: EventData, undo = false, currentBorrowIndex: Big): void {
     if (event.blockNumber <= this.fetchBlock) return;
 
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
+    const symbol = this.getSymbolFor(event.address);
+    if (symbol === null) return;
+    const position = this.positions[symbol];
 
     if (undo) {
       position.borrow = position.borrow.minus(event.returnValues.borrowAmount);
+      winston.info(`🪙 *${symbol} Borrow* by ${this.address.slice(2, 8)} removed from chain`);
     } else {
       position.borrow = new Big(event.returnValues.accountBorrows);
       position.borrowIndex = currentBorrowIndex;
+      winston.info(`🪙 *${symbol} Borrow* by ${this.address.slice(2, 8)}`);
     }
   }
 
   public onRepayBorrow(event: EventData, undo = false, currentBorrowIndex: Big): void {
     if (event.blockNumber <= this.fetchBlock) return;
 
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
+    const symbol = this.getSymbolFor(event.address);
+    if (symbol === null) return;
+    const position = this.positions[symbol];
 
     if (undo) {
       position.borrow = position.borrow.plus(event.returnValues.repayAmount);
+      winston.info(`🪙 *${symbol} Repay* by ${this.address.slice(2, 8)} removed from chain`);
     } else {
       position.borrow = new Big(event.returnValues.accountBorrows);
       position.borrowIndex = currentBorrowIndex;
+      winston.info(`🪙 *${symbol} Repay* by ${this.address.slice(2, 8)}`);
     }
   }
 
   public onLiquidateBorrow(event: EventData, undo = false): void {
     if (event.blockNumber <= this.fetchBlock) return;
 
-    const positionA = this.getPositionFor(event.address);
-    const positionB = this.getPositionFor(event.returnValues.cTokenCollateral);
+    const symbolA = this.getSymbolFor(event.address);
+    if (symbolA === null) return;
+    const positionA = this.positions[symbolA];
+    const symbolB = this.getSymbolFor(event.returnValues.cTokenCollateral);
+    if (symbolB === null) return;
+    const positionB = this.positions[symbolB];
     if (positionA === null || positionB === null) return;
 
     if (undo) {
       positionA.borrow = positionA.borrow.plus(event.returnValues.repayAmount);
       positionB.supply = positionB.supply.plus(event.returnValues.seizeTokens);
+      winston.info(`💦 Liquidation ${event.transactionHash.slice(0, 10)} removed from chain`);
     } else {
       positionA.borrow = positionA.borrow.minus(event.returnValues.repayAmount);
       positionB.supply = positionB.supply.minus(event.returnValues.seizeTokens);
+      winston.info(`💦 ${this.address.slice(2, 8)} had their *${symbolA} liquidated* and ${symbolB} seized`);
     }
   }
 
   public onTransfer(event: EventData, undo = false): void {
     if (event.blockNumber <= this.fetchBlock) return;
 
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
+    const symbol = this.getSymbolFor(event.address);
+    if (symbol === null) return;
+    const position = this.positions[symbol];
 
     const shouldAdd = this.address === event.returnValues.to;
     if (shouldAdd) {
@@ -124,12 +150,12 @@ export default class StatefulBorrower extends Borrower {
     }
   }
 
-  private getPositionFor(address: string): IBorrowerPosition | null {
+  private getSymbolFor(address: string): CTokenSymbol | null {
     const symbol = CTokenReversed[address];
     if (symbol === undefined) {
       console.warn(`Address ${address} wasn't found in reverse lookup table!`);
       return null;
     }
-    return this.positions[symbol];
+    return symbol;
   }
 }

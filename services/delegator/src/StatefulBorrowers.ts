@@ -47,12 +47,12 @@ export default class StatefulBorrowers {
 
   public async randomCheck(): Promise<void> {
     const keys = Object.keys(this.borrowers);
-    const borrower = this.borrowers[keys[keys.length * Math.random() << 0]];
-    const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
-    if (!valid && borrower.didInit) {
-      console.log(`${borrower.address} is invalid!!!`);
+    const borrower = this.borrowers[keys[(keys.length * Math.random()) << 0]];
+    if (!borrower.didInit) {
+      console.log(`${borrower.address} hasn't been initialized yet`);
     } else {
-      console.log(`${borrower.address} is valid`);
+      const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
+      if (!valid) console.log(`${borrower.address} has invalid state`);
     }
   }
 

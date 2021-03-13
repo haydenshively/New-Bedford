@@ -38,18 +38,13 @@ export default class Borrower {
     threshold: number,
   ): Promise<boolean> {
     for (let symbol of cTokenSymbols) {
-      const position = this.positions[symbol];
-      if (position.borrowIndex.eq('0')) {
-        console.error(`Failed to verify ${this.address} because borrow index was 0`);
-        return false;
-      }
-
       const snapshot = await cTokens[symbol].getAccountSnapshot(this.address)(provider);
       if (snapshot.error !== '0') {
         console.error(`Failed to get account snapshot for ${this.address}: ${snapshot.error}`);
         return false;
       }
-
+      
+      const position = this.positions[symbol];
       const supply = position.supply;
       const borrow = position.borrow.times(borrowIndices[symbol]).div(position.borrowIndex);
 
