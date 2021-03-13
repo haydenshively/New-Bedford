@@ -2,7 +2,7 @@ import Web3Utils from 'web3-utils';
 
 import { Big, BindableContract, ContractCaller } from '@goldenagellc/web3-blocks';
 
-import { CTokens, CTokenCreationBlocks } from '../types/CTokens';
+import { CTokens, CTokenSymbol, CTokenCreationBlocks } from '../types/CTokens';
 
 import abiEth from './abis/cether.json';
 import abiV1 from './abis/ctokenv1.json';
@@ -45,6 +45,11 @@ export class CToken extends BindableContract<typeof CTokenEvents> {
     return this.callerForUint256(method);
   }
 
+  public borrowIndex(): ContractCaller<Big> {
+    const method = this.inner.methods.borrowIndex();
+    return this.callerForUint256(method);
+  }
+
   public getAccountSnapshot(account: string): ContractCaller<AccountSnapshot> {
     const method = this.inner.methods.getAccountSnapshot(account);
     return this.callerFor(method, ['uint256', 'uint256', 'uint256', 'uint256'], (x) => {
@@ -58,7 +63,7 @@ export class CToken extends BindableContract<typeof CTokenEvents> {
   }
 }
 
-type InstanceMap<T> = { [d in keyof typeof CTokens]: T };
+type InstanceMap<T> = { [_ in CTokenSymbol]: T };
 
 const cTokens: InstanceMap<CToken> = {
   cBAT: new CToken(CTokens.cBAT, abiV1, CTokenCreationBlocks.cBAT),

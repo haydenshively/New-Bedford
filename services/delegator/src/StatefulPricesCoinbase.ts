@@ -1,5 +1,4 @@
 import { FetchError } from 'node-fetch';
-import winston from 'winston';
 
 import { Big } from '@goldenagellc/web3-blocks';
 

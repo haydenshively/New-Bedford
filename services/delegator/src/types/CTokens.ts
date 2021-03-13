@@ -58,3 +58,5 @@ export const CTokenCoinbaseKeys: { [_ in CTokenSymbol]: CoinbaseKey | null } = {
   cWBTC: 'BTC',
   cZRX: 'ZRX',
 };
+
+export const CTokenReversed: { [i: string]: CTokenSymbol } = Object.fromEntries(cTokenSymbols.map((symbol) => [CTokens[symbol], symbol]));
