@@ -45,6 +45,10 @@ export default class Borrower {
       }
       
       const position = this.positions[symbol];
+      if (position.borrowIndex.eq('0')) {
+        console.error(`${this.address} invalud due to 0 borrow index`);
+        return false;
+      }
       const supply = position.supply;
       const borrow = position.borrow.times(borrowIndices[symbol]).div(position.borrowIndex);
 

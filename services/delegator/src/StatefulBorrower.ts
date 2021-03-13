@@ -129,7 +129,12 @@ export default class StatefulBorrower extends Borrower {
     } else {
       positionA.borrow = positionA.borrow.minus(event.returnValues.repayAmount);
       positionB.supply = positionB.supply.minus(event.returnValues.seizeTokens);
-      winston.info(`💦 ${this.address.slice(2, 8)} had their *${symbolA} liquidated* and ${symbolB} seized`);
+      winston.info(
+        `💦 ${this.address.slice(
+          2,
+          8,
+        )} had their *${symbolA} liquidated* and ${symbolB} seized by ${event.returnValues.liquidator.slice(2, 8)}`,
+      );
     }
   }
 
@@ -140,7 +145,8 @@ export default class StatefulBorrower extends Borrower {
     if (symbol === null) return;
     const position = this.positions[symbol];
 
-    const shouldAdd = this.address === event.returnValues.to;
+    // Make sure that this borrower is the `to` address, and that this wasn't a Mint/Redeem side-effect
+    const shouldAdd = this.address === event.returnValues.to && event.address !== event.returnValues.from;
     if (shouldAdd) {
       if (undo) position.supply = position.supply.minus(event.returnValues.amount);
       else position.supply = position.supply.plus(event.returnValues.amount);
