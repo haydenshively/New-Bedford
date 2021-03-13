@@ -32,12 +32,12 @@ export class Comptroller extends BindableContract<typeof ComptrollerEvents> {
 
   public collateralFactorOf(cToken: CTokens): ContractCaller<Big> {
     const method = this.inner.methods.markets(cToken);
-    return this.callerFor<Big>(method, ['bool', 'uint256', 'bool'], (x) => Big(x['1']));
+    return this.callerFor<Big>(method, ['bool', 'uint256', 'bool'], (x) => new Big(x['1']));
   }
 
   public getAssetsIn(account: string): ContractCaller<string[]> {
     const method = this.inner.methods.getAssetsIn(account);
-    return this.callerFor<string[]>(method, ['address[]'], (x) => Big(x['0']));
+    return this.callerFor<string[]>(method, ['address[]'], (x) => x['0']);
   }
 }
 

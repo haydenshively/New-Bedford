@@ -1,5 +1,4 @@
 import { FetchError } from 'node-fetch';
-import winston from 'winston';
 
 import { Big } from '@goldenagellc/web3-blocks';
 
@@ -33,7 +32,7 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
     const updatedKeys = await this.fetch();
 
     // TODO: trigger callbacks
-    if (updatedKeys.length > 0) winston.info(this.ledger.summaryText);
+    // if (updatedKeys.length > 0) winston.info(this.ledger.summaryText);
   }
 
   private async fetch(): Promise<CoinbaseKey[]> {
@@ -41,6 +40,9 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
       const updatedKeys: CoinbaseKey[] = [];
 
       const report = await this.fetchCoinbasePrices();
+      if (report.messages === undefined) {
+        console.log(report);
+      }
       for (let i = 0; i < report.messages.length; i += 1) {
         const message = report.messages[i];
         const signature = report.signatures[i];
@@ -51,7 +53,7 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
         const knownKey = key as CoinbaseKey;
 
         // Store
-        const price: IPrice = { value: Big(value), timestamp: timestamp };
+        const price: IPrice = { value: new Big(value), timestamp: timestamp };
         if (this.ledger.append(knownKey, price, message, signature)) updatedKeys.push(knownKey);
       }
       return updatedKeys;

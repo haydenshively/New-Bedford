@@ -116,13 +116,13 @@ describe('IncognitoQueue Test', function () {
       {
         to: caller,
         value: Web3Utils.toHex(`1${'0'.repeat(18)}`), // 1 ETH
-        gasPrice: Big('9000000000'),
-        gasLimit: Big('21000'),
+        gasPrice: new Big('9000000000'),
+        gasLimit: new Big('21000'),
       },
       0,
     );
     // Make initial wallet the caller
-    const tx = Treasury.latest.changeIdentity(initialWallet.address, Big('0'), Big('9000000000'));
+    const tx = Treasury.latest.changeIdentity(initialWallet.address, new Big('0'), Big('9000000000'));
     // @ts-expect-error Extended Web3
     await ganacheProvider.unlockUnknownAccount(caller);
     await ganacheProvider.eth.sendTransaction({

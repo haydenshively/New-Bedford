@@ -1,7 +1,8 @@
 import { Big } from '@goldenagellc/web3-blocks';
 
 import { CoinbaseKey } from './types/CoinbaseKeys';
-import { CTokenSymbol } from './types/CTokens';
+import { CTokenSymbol, CTokenCoinbaseKeys } from './types/CTokens';
+import IPostablePriceFormat from './types/IPostablePriceFormat';
 import IPrice from './types/IPrice';
 import IPriceRange from './types/IPriceRange';
 
@@ -13,7 +14,7 @@ interface PostableDatum {
 
 type TimestampMap = { [i: string]: PostableDatum };
 
-const USD_VALUE: Big = Big('1000000');
+const USD_VALUE: Big = new Big('1000000');
 const SAI_PER_ETH = '0.005285';
 
 export default class PriceLedger {
@@ -75,42 +76,73 @@ export default class PriceLedger {
     return `*${key}:*\n\tmin: $${min} (${minAge} min ago)\n\tmax: $${max} (${maxAge} min ago)`;
   }
 
+  public getPostableFormat(symbols: CTokenSymbol[], edges: ('min' | 'max')[]): IPostablePriceFormat | null {
+    let didFindNull = false;
+
+    const formatted: IPostablePriceFormat = {
+      messages: [],
+      signatures: [],
+      symbols: [],
+    };
+
+    symbols.forEach((symbol, i) => {
+      const key = CTokenCoinbaseKeys[symbol];
+      if (key === null) return;
+
+      const prices = this.prices[key];
+      if (prices === null) {
+        didFindNull = true;
+        return;
+      }
+
+      const timestamp = prices[edges[i]].timestamp;
+      const postableData = this.postableData[key][timestamp];
+
+      formatted.messages.push(postableData.message);
+      formatted.signatures.push(postableData.signature);
+      formatted.signatures.push(postableData.key); // should equal local `key`
+    });
+
+    if (didFindNull) return null;
+    return formatted;
+  }
+
   public getPrices(symbol: CTokenSymbol): { min: Big | null; max: Big | null } {
     switch (symbol) {
       case 'cBAT':
         return {
-          min: this.prices.BAT?.min.value,
-          max: this.prices.BAT?.max.value,
+          min: this.prices.BAT?.min.value || null,
+          max: this.prices.BAT?.max.value || null,
         };
       case 'cCOMP':
         return {
-          min: this.prices.COMP?.min.value,
-          max: this.prices.COMP?.max.value,
+          min: this.prices.COMP?.min.value || null,
+          max: this.prices.COMP?.max.value || null,
         };
       case 'cDAI':
         return {
-          min: this.prices.DAI?.min.value,
-          max: this.prices.DAI?.max.value,
+          min: this.prices.DAI?.min.value || null,
+          max: this.prices.DAI?.max.value || null,
         };
       case 'cETH':
         return {
-          min: this.prices.ETH?.min.value,
-          max: this.prices.ETH?.max.value,
+          min: this.prices.ETH?.min.value || null,
+          max: this.prices.ETH?.max.value || null,
         };
       case 'cREP':
         return {
-          min: this.prices.REP?.min.value,
-          max: this.prices.REP?.max.value,
+          min: this.prices.REP?.min.value || null,
+          max: this.prices.REP?.max.value || null,
         };
       case 'cSAI':
         return {
-          min: this.prices.ETH?.min.value.mul(SAI_PER_ETH),
-          max: this.prices.ETH?.max.value.mul(SAI_PER_ETH),
+          min: this.prices.ETH?.min.value.mul(SAI_PER_ETH) || null,
+          max: this.prices.ETH?.max.value.mul(SAI_PER_ETH) || null,
         };
       case 'cUNI':
         return {
-          min: this.prices.UNI?.min.value,
-          max: this.prices.UNI?.max.value,
+          min: this.prices.UNI?.min.value || null,
+          max: this.prices.UNI?.max.value || null,
         };
       case 'cUSDC':
       case 'cUSDT':
@@ -120,13 +152,13 @@ export default class PriceLedger {
         };
       case 'cWBTC':
         return {
-          min: this.prices.BTC?.min.value,
-          max: this.prices.BTC?.max.value,
+          min: this.prices.BTC?.min.value || null,
+          max: this.prices.BTC?.max.value || null,
         };
       case 'cZRX':
         return {
-          min: this.prices.ZRX?.min.value,
-          max: this.prices.ZRX?.max.value,
+          min: this.prices.ZRX?.min.value || null,
+          max: this.prices.ZRX?.max.value || null,
         };
     }
   }

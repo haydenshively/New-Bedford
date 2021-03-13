@@ -45,7 +45,7 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
     this.active = new TxQueue(initialWallet);
     this.staged = null;
 
-    this.gasPrice = Big('0');
+    this.gasPrice = new Big('0');
   }
 
   public get queue(): TxQueue {
@@ -88,7 +88,7 @@ export default class IncognitoQueue implements IEthSubscriptionConsumer {
       // TODO other options available on this append transition -- could set this up
       // so that we test latency on every transition (since tx speed isn't as
       // crucial on these, it's fine to send with Infura to test latency)
-      const balance = Big(await this.active.wallet.getBalance());
+      const balance = new Big(await this.active.wallet.getBalance());
       // Note: `this.staged` is known to be non-null because of `this.transitioning`
       const tx = Treasury.latest.changeIdentity(this.staged!.wallet.address, balance, this.gasPrice);
       this.active.append(tx);

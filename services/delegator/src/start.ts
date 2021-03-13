@@ -1,21 +1,24 @@
 import ipc from 'node-ipc';
 import { EventData } from 'web3-eth-contract';
+import Web3Utils from 'web3-utils';
 import winston from 'winston';
 
 import { providerFor } from '@goldenagellc/web3-blocks';
 
-import { CTokens } from './types/CTokens';
-
 import SlackHook from './logging/SlackHook';
 
+import cTokens from './contracts/CToken';
 import comptroller from './contracts/Comptroller';
 import openOraclePriceData from './contracts/OpenOraclePriceData';
 import uniswapAnchoredView from './contracts/UniswapAnchoredView';
 
 import PriceLedger from './PriceLedger';
+import StatefulBorrowers from './StatefulBorrowers';
 import StatefulComptroller from './StatefulComptroller';
 import StatefulPricesOnChain from './StatefulPricesOnChain';
 import StatefulPricesCoinbase from './StatefulPricesCoinbase';
+
+import getBorrowers from './CompoundAPI';
 
 require('dotenv-safe').config();
 
@@ -40,15 +43,16 @@ winston.configure({
   exitOnError: false,
 });
 
-const symbols: (keyof typeof CTokens)[] = <(keyof typeof CTokens)[]>Object.keys(CTokens);
-
-import addressesJSON from './_borrowers.json';
-const addressesList = new Set<string>([...addressesJSON.high_value, ...addressesJSON.previously_liquidated]);
-
 const priceLedger = new PriceLedger();
 
+const statefulBorrowers = new StatefulBorrowers(provider, cTokens);
 const statefulComptroller = new StatefulComptroller(provider, comptroller);
-const statefulPricesOnChain = new StatefulPricesOnChain(provider, priceLedger, openOraclePriceData, uniswapAnchoredView);
+const statefulPricesOnChain = new StatefulPricesOnChain(
+  provider,
+  priceLedger,
+  openOraclePriceData,
+  uniswapAnchoredView,
+);
 const statefulPricesCoinbase = new StatefulPricesCoinbase(
   priceLedger,
   process.env.COINBASE_ENDPOINT!,
@@ -58,12 +62,18 @@ const statefulPricesCoinbase = new StatefulPricesCoinbase(
 );
 
 async function start() {
+  await statefulBorrowers.init();
   await statefulComptroller.init();
   await statefulPricesOnChain.init();
   await statefulPricesCoinbase.init(4000);
 
-  console.log(statefulComptroller.getCloseFactor().toFixed(0));
-  console.log(statefulComptroller.getLiquidationIncentive().toFixed(0));
+  console.log('Searching for borrowers using the Compound API...');
+  const borrowers = await getBorrowers('10');
+  console.log(`Found ${borrowers.length} borrowers using the Compound API`);
+
+  statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
+
+  setInterval(statefulBorrowers.randomCheck.bind(statefulBorrowers), 500);
 }
 
 // const borrowers: ICompoundBorrower[] = [];

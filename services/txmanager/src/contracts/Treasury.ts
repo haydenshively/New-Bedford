@@ -26,7 +26,7 @@ export class Treasury extends Contract {
   }
 
   public changeIdentity(newEOA: string, currentEOABalance: Big, gasPrice: Big): ITx {
-    const gasLimit = Big('400000');
+    const gasLimit = new Big('400000');
     const maxTxFee = gasLimit.mul(gasPrice);
 
     const tx = this.txFor(this.inner.methods.changeIdentity(newEOA), gasLimit, gasPrice);
@@ -36,7 +36,7 @@ export class Treasury extends Contract {
   }
 
   public refillCaller(currentEOA: string): ITx {
-    return this.changeIdentity(currentEOA, Big('0'), Big('0'));
+    return this.changeIdentity(currentEOA, new Big('0'), Big('0'));
   }
 }
 
