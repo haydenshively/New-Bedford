@@ -18,7 +18,7 @@ import competitors from './_competitors.json';
 const competitorsFrom = new Set(competitors.from as string[]);
 const competitorsTo = new Set(competitors.to as string[]);
 
-const INITIAL_GAS_PRICE: Big = Big('100000000000');
+const INITIAL_GAS_PRICE: Big = new Big('100000000000');
 const DEADLINE_CUSHION = 500;
 
 export default class TxManager extends CandidatePool implements IEthSubscriptionConsumer {
@@ -30,7 +30,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
 
   private tx: ITx | null = null;
 
-  private gasPriceMax: Big = Big('0');
+  private gasPriceMax: Big = new Big('0');
 
   private liquidatorWrapper: string | null = null;
 
@@ -112,7 +112,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
     tx.to = this.liquidatorWrapper!;
 
     // Assume expectedRevenue is just plain ETH (no extra zeros or anything)
-    this.gasPriceMax = Big(target.expectedRevenue * 1e18).div(tx.gasLimit);
+    this.gasPriceMax = new Big(target.expectedRevenue * 1e18).div(tx.gasLimit);
     this.tx = tx;
     this.resetGasPrice();
     this.sendIfDeadlineIsApproaching(this.tx);
@@ -130,7 +130,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
       if (tx.from === this.queue.wallet.address) return; // Self
       if (!(competitorsTo.has(tx.to.slice(2)) || competitorsFrom.has(tx.from.slice(2)))) return;
 
-      const gasPrice = Big(tx.gasPrice);
+      const gasPrice = new Big(tx.gasPrice);
       if (gasPrice.lt(this.tx!.gasPrice)) return;
       if (gasPrice.gte(this.gasPriceMax)) return;
 

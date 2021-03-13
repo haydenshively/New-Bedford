@@ -5,7 +5,7 @@ import { Big, Contract, ITx } from '@goldenagellc/web3-blocks';
 import abi from './abis/liquidator.json';
 
 export class Liquidator extends Contract {
-  static readonly gasLimit = Big('2200000');
+  static readonly gasLimit = new Big('2200000');
 
   constructor(address: string) {
     super(address, abi as Web3Utils.AbiItem[]);

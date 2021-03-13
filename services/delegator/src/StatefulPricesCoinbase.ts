@@ -40,6 +40,9 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
       const updatedKeys: CoinbaseKey[] = [];
 
       const report = await this.fetchCoinbasePrices();
+      if (report.messages === undefined) {
+        console.log(report);
+      }
       for (let i = 0; i < report.messages.length; i += 1) {
         const message = report.messages[i];
         const signature = report.signatures[i];
@@ -50,7 +53,7 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
         const knownKey = key as CoinbaseKey;
 
         // Store
-        const price: IPrice = { value: Big(value), timestamp: timestamp };
+        const price: IPrice = { value: new Big(value), timestamp: timestamp };
         if (this.ledger.append(knownKey, price, message, signature)) updatedKeys.push(knownKey);
       }
       return updatedKeys;

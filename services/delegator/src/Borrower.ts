@@ -1,145 +1,137 @@
-import { Big } from '@goldenagellc/web3-blocks';
-import { EventData } from 'web3-eth-contract';
 import Web3 from 'web3';
-import cTokens from './contracts/CToken';
 
-import { CTokenReversed, CTokenSymbol, cTokenSymbols } from './types/CTokens';
+import { Big } from '@goldenagellc/web3-blocks';
 
-type BorrowIndex = {
-  value: BigInt;
-  block: number;
-  logIndex: number;
-};
+import { CTokenSymbol, cTokenSymbols } from './types/CTokens';
+import { CToken } from './contracts/CToken';
+import PriceLedger from './PriceLedger';
+import StatefulComptroller from './StatefulComptroller';
 
-interface IBorrowerPosition {
+export interface IBorrowerPosition {
   supply: Big;
   borrow: Big;
-  borrowIndices: BorrowIndex[];
+  borrowIndex: Big;
+}
+
+interface ILiquidity {
+  liquidity: Big;
+  shortfall: Big;
+  symbols: CTokenSymbol[];
+  edges: ('min' | 'max')[];
 }
 
 export default class Borrower {
-  private readonly address: string;
-  private readonly positions: { readonly [_ in CTokenSymbol]: IBorrowerPosition };
-  private readonly fetchBlock: number;
-  private didInit: boolean = false;
+  public readonly address: string;
+  protected readonly positions: { readonly [_ in CTokenSymbol]: IBorrowerPosition };
 
-  constructor(address: string, fetchBlock: number) {
+  constructor(address: string) {
     this.address = address;
     this.positions = Object.fromEntries(
-      cTokenSymbols.map((symbol) => [symbol, { supply: Big('0'), borrow: Big('0'), borrowIndices: <BorrowIndex[]>[] }]),
+      cTokenSymbols.map((symbol) => [symbol, { supply: new Big('0'), borrow: Big('0'), borrowIndex: Big('0') }]),
     ) as { [_ in CTokenSymbol]: IBorrowerPosition };
-    this.fetchBlock = fetchBlock;
   }
 
-  public seemsValid(): boolean {
-    return this.didInit;
-  }
-
-  public async init(provider: Web3): Promise<void> {
-    let didInit = true;
-
+  public async verify(
+    provider: Web3,
+    cTokens: { [_ in CTokenSymbol]: CToken },
+    borrowIndices: { [_ in CTokenSymbol]: Big },
+    threshold: number,
+  ): Promise<boolean> {
     for (let symbol of cTokenSymbols) {
-      const snapshot = await cTokens[symbol].getAccountSnapshot(this.address)(provider, this.fetchBlock);
-      if (snapshot.error !== '0') {
-        didInit = false;
-        continue;
+      const position = this.positions[symbol];
+      if (position.borrowIndex.eq('0')) {
+        console.error(`Failed to verify ${this.address} because borrow index was 0`);
+        return false;
       }
 
+      const snapshot = await cTokens[symbol].getAccountSnapshot(this.address)(provider);
+      if (snapshot.error !== '0') {
+        console.error(`Failed to get account snapshot for ${this.address}: ${snapshot.error}`);
+        return false;
+      }
+
+      const supply = position.supply;
+      const borrow = position.borrow.times(borrowIndices[symbol]).div(position.borrowIndex);
+
+      if (supply.eq('0')) {
+        if (!snapshot.cTokenBalance.eq('0')) {
+          console.error(`${this.address} invalid due to 0 supply mismatch`);
+          return false;
+        }
+      } else {
+        const supplyError = supply.minus(snapshot.cTokenBalance).div(snapshot.cTokenBalance).abs();
+        if (supplyError.toNumber() > threshold) {
+          console.error(`${this.address} invalid due to high supply error (${supplyError.toFixed(5)})`);
+          return false;
+        }
+      }
+
+      if (borrow.eq('0')) {
+        if (!snapshot.borrowBalance.eq('0')) {
+          console.error(`${this.address} invalid due to 0 borrow mismatch`);
+          return false;
+        }
+      } else {
+        const borrowError = borrow.minus(snapshot.borrowBalance).div(snapshot.borrowBalance).abs();
+        if (borrowError.toNumber() > threshold) {
+          console.error(`${this.address} invalid due to high borrow error (${borrowError.toFixed(5)})`);
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  public liquidity(
+    comptroller: StatefulComptroller,
+    priceLedger: PriceLedger,
+    exchangeRates: { [_ in CTokenSymbol]: Big },
+    borrowIndices: { [_ in CTokenSymbol]: Big },
+  ): ILiquidity | null {
+    let collat: Big = new Big('0');
+    let borrow: Big = new Big('0');
+    const symbols: CTokenSymbol[] = [];
+    const edges: ('min' | 'max')[] = [];
+
+    for (let symbol of cTokenSymbols) {
       const position = this.positions[symbol];
-      position.supply = position.supply.plus(snapshot.cTokenBalance);
-      position.borrow = position.borrow.plus(snapshot.borrowBalance);
+      if (position.supply.eq('0') || position.borrow.eq('0') || position.borrowIndex.eq('0')) continue;
+
+      const collateralFactor = comptroller.getCollateralFactor(symbol);
+      const pricesUSD = priceLedger.getPrices(symbol);
+      if (collateralFactor === null || pricesUSD.min === null || pricesUSD.max === null) return null;
+
+      const edge: 'min' | 'max' = position.supply.gt('0') ? 'min' : 'max';
+      collat = collat.plus(
+        position.supply
+          .times(exchangeRates[symbol])
+          .div('1e+18')
+          .times(collateralFactor)
+          .div('1e+18')
+          .times(pricesUSD[edge]!),
+      );
+      borrow = borrow.plus(
+        position.borrow.times(borrowIndices[symbol]).div(position.borrowIndex).times(pricesUSD[edge]!),
+      );
+      symbols.push(symbol);
+      edges.push(edge);
     }
 
-    this.didInit = didInit;
-  }
-
-  public onMint(event: EventData, undo = false): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
-
-    if (undo) position.supply = position.supply.minus(event.returnValues.mintTokens);
-    else position.supply = position.supply.plus(event.returnValues.mintTokens);
-  }
-
-  public onRedeem(event: EventData, undo = false): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
-
-    if (undo) position.supply = position.supply.plus(event.returnValues.redeemTokens);
-    else position.supply = position.supply.minus(event.returnValues.redeemTokens);
-  }
-
-  public onBorrow(event: EventData, undo = false, currentBorrowIndex: Big): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
-
-    if (undo) {
-      position.borrow = position.borrow.minus(event.returnValues.borrowAmount);
-      this.removeBorrowIndex(position, event);
+    let liquidity: Big;
+    let shortfall: Big;
+    if (collat.gt(borrow)) {
+      liquidity = collat.minus(borrow);
+      shortfall = new Big('0');
     } else {
-      position.borrow = Big(event.returnValues.accountBorrows);
-      this.storeBorrowIndex(position, event, currentBorrowIndex);
+      liquidity = new Big('0');
+      shortfall = borrow.minus(collat);
     }
-  }
 
-  public onRepayBorrow(event: EventData, undo = false, currentBorrowIndex: Big): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
-    const position = this.getPositionFor(event.address);
-    if (position === null) return;
-
-    if (undo) {
-      position.borrow = position.borrow.plus(event.returnValues.repayAmount);
-      this.removeBorrowIndex(position, event);
-    } else {
-      position.borrow = Big(event.returnValues.accountBorrows);
-      this.storeBorrowIndex(position, event, currentBorrowIndex);
-    }
-  }
-
-  public onLiquidateBorrow(event: EventData): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-    
-    const positionA = this.getPositionFor(event.address);
-    const positionB = this.getPositionFor(event.returnValues.cTokenCollateral);
-    if (positionA === null || positionB === null) return;
-    positionA.borrow = positionA.borrow.minus(event.returnValues.repayAmount);
-    positionB.supply = positionB.supply.minus(event.returnValues.seizeTokens);
-  }
-
-  private storeBorrowIndex(position: IBorrowerPosition, event: EventData, borrowIndex: Big): void {
-    // ** PROCESS IS SIMILAR TO PRICES IN `StatefulPricesOnChain` **
-    position.borrowIndices.push({
-      value: borrowIndex,
-      block: event.blockNumber,
-      logIndex: event.logIndex,
-    });
-    // Sort in-place, most recent block first (in case events come out-of-order)
-    position.borrowIndices.sort((a, b) => b.block - a.block);
-    // Assume chain won't reorder more than 12 blocks, and trim prices array accordingly...
-    // BUT always maintain at least 2 items in the array (new price and 1 other price)
-    // in case the new price gets removed from the chain later on (need fallback)
-    const idx = position.borrowIndices.findIndex((i) => event.blockNumber - i.block > 12);
-    if (idx !== -1) position.borrowIndices.splice(Math.max(idx, 2));
-  }
-
-  private removeBorrowIndex(position: IBorrowerPosition, event: EventData): void {
-    const idx = position.borrowIndices.findIndex((i) => i.block === event.blockNumber && i.logIndex === event.logIndex);
-    if (idx !== -1) position.borrowIndices.splice(idx, 1);
-  }
-
-  private getPositionFor(address: string): IBorrowerPosition | null {
-    const symbol = CTokenReversed[address];
-    if (symbol === undefined) {
-      console.warn(`Address ${address} wasn't found in reverse lookup table!`);
-      return null;
-    }
-    return this.positions[symbol];
+    return {
+      liquidity: liquidity,
+      shortfall: shortfall,
+      symbols: symbols,
+      edges: edges,
+    };
   }
 }

@@ -55,9 +55,9 @@ export class CToken extends BindableContract<typeof CTokenEvents> {
     return this.callerFor(method, ['uint256', 'uint256', 'uint256', 'uint256'], (x) => {
       return {
         error: x['0'],
-        cTokenBalance: Big(x['1']),
-        borrowBalance: Big(x['2']),
-        exchangeRate: Big(x['3']),
+        cTokenBalance: new Big(x['1']),
+        borrowBalance: new Big(x['2']),
+        exchangeRate: new Big(x['3']),
       } as AccountSnapshot;
     });
   }

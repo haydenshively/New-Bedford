@@ -54,15 +54,15 @@ export default class StatefulComptroller {
   }
 
   public getCloseFactor(): Big | null {
-    return this.closeFactor?.value;
+    return this.closeFactor?.value || null;
   }
 
   public getLiquidationIncentive(): Big | null {
-    return this.liquidationIncentive?.value;
+    return this.liquidationIncentive?.value || null;
   }
 
   public getCollateralFactor(symbol: CTokenSymbol): Big | null {
-    return this.collateralFactors[symbol]?.value;
+    return this.collateralFactors[symbol]?.value || null;
   }
 
   private async fetchCloseFactor(block: number): Promise<void> {
@@ -110,7 +110,7 @@ export default class StatefulComptroller {
         if (!StatefulComptroller.shouldAllowData(ev, this.closeFactor!)) return;
 
         this.closeFactor = {
-          value: Big(ev.returnValues.newCloseFactorMantissa),
+          value: new Big(ev.returnValues.newCloseFactorMantissa),
           block: ev.blockNumber,
           logIndex: ev.logIndex,
         };
@@ -119,7 +119,7 @@ export default class StatefulComptroller {
         if (!StatefulComptroller.shouldAllowDataChange(ev, this.closeFactor!)) return;
 
         this.closeFactor = {
-          value: Big(ev.returnValues.oldCloseFactorMantissa),
+          value: new Big(ev.returnValues.oldCloseFactorMantissa),
           block: ev.blockNumber,
           logIndex: ev.logIndex,
         };
@@ -138,7 +138,7 @@ export default class StatefulComptroller {
         if (!StatefulComptroller.shouldAllowData(ev, this.liquidationIncentive!)) return;
 
         this.liquidationIncentive = {
-          value: Big(ev.returnValues.newLiquidationIncentiveMantissa),
+          value: new Big(ev.returnValues.newLiquidationIncentiveMantissa),
           block: ev.blockNumber,
           logIndex: ev.logIndex,
         };
@@ -147,7 +147,7 @@ export default class StatefulComptroller {
         if (!StatefulComptroller.shouldAllowDataChange(ev, this.liquidationIncentive!)) return;
 
         this.liquidationIncentive = {
-          value: Big(ev.returnValues.oldLiquidationIncentiveMantissa),
+          value: new Big(ev.returnValues.oldLiquidationIncentiveMantissa),
           block: ev.blockNumber,
           logIndex: ev.logIndex,
         };
@@ -170,7 +170,7 @@ export default class StatefulComptroller {
             const collateralFactor = this.collateralFactors[symbol]!;
             if (!StatefulComptroller.shouldAllowData(ev, collateralFactor)) return;
 
-            collateralFactor.value = Big(ev.returnValues.newCollateralFactorMantissa);
+            collateralFactor.value = new Big(ev.returnValues.newCollateralFactorMantissa);
             collateralFactor.block = ev.blockNumber;
             collateralFactor.logIndex = ev.logIndex;
           }
@@ -184,7 +184,7 @@ export default class StatefulComptroller {
             const collateralFactor = this.collateralFactors[symbol]!;
             if (!StatefulComptroller.shouldAllowDataChange(ev, collateralFactor)) return;
 
-            collateralFactor.value = Big(ev.returnValues.oldCollateralFactorMantissa);
+            collateralFactor.value = new Big(ev.returnValues.oldCollateralFactorMantissa);
             collateralFactor.block = ev.blockNumber;
             collateralFactor.logIndex = ev.logIndex;
           }

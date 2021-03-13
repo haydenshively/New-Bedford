@@ -80,9 +80,9 @@ describe('Treasury Test', () => {
   it('should change identity', async () => {
     const currentEOABalance = await ganacheProvider.eth.getBalance(caller);
     const newEOA = ganacheProvider.eth.accounts.create().address;
-    const gasPrice = new Big(Web3Utils.toWei('30', 'gwei'));
+    const gasPrice = new new Big(Web3Utils.toWei('30', 'gwei'));
 
-    const tx = treasury.changeIdentity(newEOA, Big(currentEOABalance), gasPrice);
+    const tx = treasury.changeIdentity(newEOA, new Big(currentEOABalance), gasPrice);
     const receipt = await ganacheProvider.eth.sendTransaction({
       from: caller,
       to: tx.to,

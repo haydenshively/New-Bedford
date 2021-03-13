@@ -80,7 +80,7 @@ export default class StatefulPricesOnChain {
 
         // Store the new price
         const newPrice = {
-          value: Big(ev.returnValues.value),
+          value: new Big(ev.returnValues.value),
           timestamp: ev.returnValues.timestamp,
           block: ev.blockNumber,
           logIndex: ev.logIndex,

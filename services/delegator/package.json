@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@tsconfig/node14": "^1.0.0",
+    "@types/big.js": "^6.0.2",
     "@types/chai": "^4.2.14",
     "@types/dotenv-safe": "^8.1.1",
     "@types/mocha": "^8.0.4",
