@@ -1,7 +1,7 @@
 import { Big } from '@goldenagellc/web3-blocks';
 
 import { CoinbaseKey } from './types/CoinbaseKeys';
-import { CTokenSymbol, CTokenCoinbaseKeys } from './types/CTokens';
+import { CTokenSymbol, cTokenCoinbaseKeys } from './types/CTokens';
 import IPostablePriceFormat from './types/IPostablePriceFormat';
 import IPrice from './types/IPrice';
 import IPriceRange from './types/IPriceRange';
@@ -86,7 +86,7 @@ export default class PriceLedger {
     };
 
     symbols.forEach((symbol, i) => {
-      const key = CTokenCoinbaseKeys[symbol];
+      const key = cTokenCoinbaseKeys[symbol];
       if (key === null) return;
 
       const prices = this.prices[key];

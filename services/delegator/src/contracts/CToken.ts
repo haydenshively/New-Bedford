@@ -2,7 +2,7 @@ import Web3Utils from 'web3-utils';
 
 import { Big, BindableContract, ContractCaller } from '@goldenagellc/web3-blocks';
 
-import { CTokens, CTokenSymbol, CTokenVersion, CTokenCreationBlocks, CTokenVersions } from '../types/CTokens';
+import { CTokens, CTokenSymbol, CTokenVersion, cTokenCreationBlocks, cTokenVersions } from '../types/CTokens';
 
 import abiEth from './abis/cether.json';
 import abiV1 from './abis/ctokenv1.json';
@@ -31,7 +31,7 @@ export class CToken extends BindableContract<typeof CTokenEvents> {
 
   constructor(symbol: CTokenSymbol) {
     let abi: Web3Utils.AbiItem[];
-    switch (CTokenVersions[symbol]) {
+    switch (cTokenVersions[symbol]) {
       case CTokenVersion.V1:
         abi = abiV1 as Web3Utils.AbiItem[];
         break;
@@ -42,9 +42,9 @@ export class CToken extends BindableContract<typeof CTokenEvents> {
         abi = abiEth as Web3Utils.AbiItem[];
         break;
     }
-    super(CTokens[symbol], abi, CTokenEvents, CTokenCreationBlocks[symbol]);
+    super(CTokens[symbol], abi, CTokenEvents, cTokenCreationBlocks[symbol]);
     this.symbol = symbol;
-    this.version = CTokenVersions[symbol];
+    this.version = cTokenVersions[symbol];
   }
 
   public exchangeRateStored(): ContractCaller<Big> {

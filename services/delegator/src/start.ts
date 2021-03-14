@@ -60,25 +60,47 @@ const statefulPricesCoinbase = new StatefulPricesCoinbase(
   process.env.CB_ACCESS_PASSPHRASE!,
 );
 
+let candidatesObj = {
+  previous: <string[]>[],
+};
+
 async function start(ipc: any) {
   await statefulBorrowers.init();
   await statefulComptroller.init();
   await statefulPricesOnChain.init();
   await statefulPricesCoinbase.init(4000);
 
-  console.log('Searching for borrowers using the Compound API...');
+  winston.log('info', 'Searching for borrowers using the Compound API...');
   const borrowers = await getBorrowers('10');
-  console.log(`Found ${borrowers.length} borrowers using the Compound API`);
+  winston.log('info', `Found ${borrowers.length} borrowers using the Compound API`);
 
+  const borrowersPushStart = Date.now();
   statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
+  winston.log('info', `Fetched all borrower data in ${Date.now() - borrowersPushStart} ms`);
 
   setInterval(async () => {
     const candidates = await statefulBorrowers.scan(statefulComptroller, priceLedger);
+    const candidatesSet = new Set<string>()
+
     candidates.forEach((candidate) => {
+      candidatesSet.add(candidate.address);
       ipc.emit('liquidation-candidate-add', candidate);
     });
+
+    candidatesObj.previous.forEach((address) => {
+      if (candidatesSet.has(address)) return;
+      ipc.emit('liquidation-candidate-remove', address);
+    })
+
+    candidatesObj.previous = Array.from(candidatesSet);
   }, 4000);
-  // setInterval(() => provider.eth.isSyncing((e, s) => console.log(s)), 1000);
+}
+
+function stop() {
+  // @ts-expect-error: Web3 typings are incorrect for `clearSubscriptions()`
+  provider.eth.clearSubscriptions();
+  // @ts-expect-error: We already checked that type is valid
+  provider.eth.currentProvider.connection.destroy();
 }
 
 ipc.config.appspace = 'newbedford.';
@@ -86,24 +108,21 @@ ipc.config.id = 'delegator';
 ipc.config.silent = true;
 ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
   ipc.of['txmanager'].on('connect', () => {
-    console.log('Connected');
-
+    console.log('Connected to TxManager\'s IPC');
     start(ipc.of['txmanager']);
-
-    // ipc.of['txmanager'].emit('liquidation-candidate-add', 'My message');
   });
+
+  ipc.of['txmanager'].on('disconnect', () => {
+    console.log('Disconnected from TxManager\'s IPC');
+    stop();
+    process.exit();
+  })
 });
 
 process.on('SIGINT', () => {
   console.log('\nCaught interrupt signal');
-
-  // @ts-expect-error: Web3 typings are incorrect for `clearSubscriptions()`
-  provider.eth.clearSubscriptions();
-  // @ts-expect-error: We already checked that type is valid
-  provider.eth.currentProvider.connection.destroy();
-
   ipc.disconnect('txmanager');
-
+  stop();
   console.log('Exited cleanly');
   process.exit();
 });

@@ -95,13 +95,15 @@ export enum Instances {
   // v1,
   // v2,
   // ...
+  adam,
   latest,
 }
 
 type InstanceMap<T> = { [d in keyof typeof Instances]: T };
 
 const liquidators: InstanceMap<Liquidator> = {
-  latest: new Liquidator('0x29FAe933BE0186605f0Aca29A2387AcDB9B5EECC'),
+  adam: new Liquidator('0x29FAe933BE0186605f0Aca29A2387AcDB9B5EECC'),
+  latest: new Liquidator('0x0A4132Af8e92cBB4ffC218627a889c088926FF49'),
 };
 
 export default liquidators;

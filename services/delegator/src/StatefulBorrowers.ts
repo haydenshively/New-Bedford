@@ -40,20 +40,15 @@ export default class StatefulBorrowers {
     this.subscribe(block);
   }
 
-  public async push(addresses: string[]): Promise<void> {
+  public async push(addresses: string[]): Promise<void[]> {
     const block = await this.provider.eth.getBlockNumber();
+    const promises = <Promise<void>[]>[];
     addresses.forEach((address) => {
       this.borrowers[address] = new StatefulBorrower(address, this.provider, this.cTokens);
-      this.borrowers[address].fetchAll(block);
+      promises.push(...this.borrowers[address].fetchAll(block));
     });
+    return Promise.all(promises);
   }
-
-  // public async randomCheck(): Promise<void> {
-  //   const keys = Object.keys(this.borrowers);
-  //   const borrower = this.borrowers[keys[(keys.length * Math.random()) << 0]];
-  //   const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
-  //   if (!valid) console.log(`${borrower.address} has invalid state`);
-  // }
 
   public async scan(comptroller: StatefulComptroller, priceLedger: PriceLedger): Promise<ILiquidationCandidate[]> {
     const exchangeRateArray = await Promise.all(this.fetchExchangeRates());
@@ -97,88 +92,57 @@ export default class StatefulBorrowers {
     cTokenSymbols.forEach((symbol) => {
       const subscribeTo = this.cTokens[symbol].bindTo(this.provider).subscribeTo;
 
+      const respondToMint = (ev: EventData) => {
+        const minter: string = ev.returnValues.minter;
+        if (minter in this.borrowers) this.borrowers[minter].onMint(ev);
+      };
+      const respondToRedeem = (ev: EventData) => {
+        const redeemer: string = ev.returnValues.redeemer;
+        if (redeemer in this.borrowers) this.borrowers[redeemer].onRedeem(ev);
+      };
+      const respondToBorrow = (ev: EventData) => {
+        const borrower: string = ev.returnValues.borrower;
+        if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
+      };
+      const respondToRepay = (ev: EventData) => {
+        const borrower: string = ev.returnValues.borrower;
+        if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev);
+      };
+      const respondToLiquidate = (ev: EventData) => {
+        const borrower: string = ev.returnValues.borrower;
+        if (borrower in this.borrowers) this.borrowers[borrower].onLiquidateBorrow(ev);
+      };
+      const respondToTransfer = (ev: EventData) => {
+        const from: string = ev.returnValues.from;
+        if (from in this.borrowers) this.borrowers[from].onTransfer(ev);
+        const to: string = ev.returnValues.to;
+        if (to in this.borrowers) this.borrowers[to].onTransfer(ev);
+      };
+
+      subscribeTo.Mint(block).on('data', respondToMint).on('changed', respondToMint).on('error', console.error);
+      subscribeTo.Redeem(block).on('data', respondToRedeem).on('changed', respondToRedeem).on('error', console.error);
+      subscribeTo.Borrow(block).on('data', respondToBorrow).on('changed', respondToBorrow).on('error', console.error);
+      subscribeTo
+        .RepayBorrow(block)
+        .on('data', respondToRepay)
+        .on('changed', respondToRepay)
+        .on('error', console.error);
+      subscribeTo
+        .LiquidateBorrow(block)
+        .on('data', respondToLiquidate)
+        .on('changed', respondToLiquidate)
+        .on('error', console.error);
+      subscribeTo
+        .Transfer(block)
+        .on('data', respondToTransfer)
+        .on('changed', respondToTransfer)
+        .on('error', console.error);
       subscribeTo
         .AccrueInterest(block)
         .on('data', (ev: EventData) => {
           this.borrowIndices[symbol] = new Big(ev.returnValues.borrowIndex);
         })
-        .on('error', console.log);
-
-      subscribeTo
-        .Mint(block)
-        .on('data', (ev: EventData) => {
-          const minter: string = ev.returnValues.minter;
-          if (minter in this.borrowers) this.borrowers[minter].onMint(ev);
-        })
-        .on('changed', (ev: EventData) => {
-          const minter: string = ev.returnValues.minter;
-          if (minter in this.borrowers) this.borrowers[minter].onMint(ev);
-        })
-        .on('error', console.log);
-
-      subscribeTo
-        .Redeem(block)
-        .on('data', (ev: EventData) => {
-          const redeemer: string = ev.returnValues.redeemer;
-          if (redeemer in this.borrowers) this.borrowers[redeemer].onRedeem(ev);
-        })
-        .on('changed', (ev: EventData) => {
-          const redeemer: string = ev.returnValues.redeemer;
-          if (redeemer in this.borrowers) this.borrowers[redeemer].onRedeem(ev);
-        })
-        .on('error', console.log);
-
-      subscribeTo
-        .Borrow(block)
-        .on('data', (ev: EventData) => {
-          const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
-        })
-        .on('changed', (ev: EventData) => {
-          const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
-        })
-        .on('error', console.log);
-
-      subscribeTo
-        .RepayBorrow(block)
-        .on('data', (ev: EventData) => {
-          const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev);
-        })
-        .on('changed', (ev: EventData) => {
-          const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev);
-        })
-        .on('error', console.log);
-
-      subscribeTo
-        .LiquidateBorrow(block)
-        .on('data', (ev: EventData) => {
-          const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onLiquidateBorrow(ev);
-        })
-        .on('changed', (ev: EventData) => {
-          const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onLiquidateBorrow(ev);
-        })
-        .on('error', console.log);
-
-      subscribeTo
-        .Transfer(block)
-        .on('data', (ev: EventData) => {
-          const from: string = ev.returnValues.from;
-          if (from in this.borrowers) this.borrowers[from].onTransfer(ev);
-          const to: string = ev.returnValues.to;
-          if (to in this.borrowers) this.borrowers[to].onTransfer(ev);
-        })
-        .on('changed', (ev: EventData) => {
-          const from: string = ev.returnValues.from;
-          if (from in this.borrowers) this.borrowers[from].onTransfer(ev);
-          const to: string = ev.returnValues.to;
-          if (to in this.borrowers) this.borrowers[to].onTransfer(ev);
-        })
-        .on('error', console.log);
+        .on('error', console.error);
     });
   }
 }
