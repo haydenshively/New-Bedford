@@ -40,20 +40,16 @@ export default class StatefulBorrowers {
   public async push(addresses: string[]): Promise<void> {
     const block = await this.provider.eth.getBlockNumber();
     addresses.forEach((address) => {
-      this.borrowers[address] = new StatefulBorrower(address, block);
-      this.borrowers[address].init(this.provider, this.cTokens);
+      this.borrowers[address] = new StatefulBorrower(address, this.provider, this.cTokens);
+      this.borrowers[address].fetchAll(block);
     });
   }
 
   public async randomCheck(): Promise<void> {
     const keys = Object.keys(this.borrowers);
     const borrower = this.borrowers[keys[(keys.length * Math.random()) << 0]];
-    if (!borrower.didInit) {
-      console.log(`${borrower.address} hasn't been initialized yet`);
-    } else {
-      const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
-      if (!valid) console.log(`${borrower.address} has invalid state`);
-    }
+    const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
+    if (!valid) console.log(`${borrower.address} has invalid state`);
   }
 
   private fetchBorrowIndices(block: number): Promise<void>[] {
@@ -81,7 +77,7 @@ export default class StatefulBorrowers {
         })
         .on('changed', (ev: EventData) => {
           const minter: string = ev.returnValues.minter;
-          if (minter in this.borrowers) this.borrowers[minter].onMint(ev, true);
+          if (minter in this.borrowers) this.borrowers[minter].onMint(ev);
         })
         .on('error', console.log);
 
@@ -93,7 +89,7 @@ export default class StatefulBorrowers {
         })
         .on('changed', (ev: EventData) => {
           const redeemer: string = ev.returnValues.redeemer;
-          if (redeemer in this.borrowers) this.borrowers[redeemer].onRedeem(ev, true);
+          if (redeemer in this.borrowers) this.borrowers[redeemer].onRedeem(ev);
         })
         .on('error', console.log);
 
@@ -101,11 +97,11 @@ export default class StatefulBorrowers {
         .Borrow(block)
         .on('data', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev, false, this.borrowIndices[symbol]);
+          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
         })
         .on('changed', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev, true, this.borrowIndices[symbol]);
+          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
         })
         .on('error', console.log);
 
@@ -113,11 +109,11 @@ export default class StatefulBorrowers {
         .RepayBorrow(block)
         .on('data', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev, false, this.borrowIndices[symbol]);
+          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev);
         })
         .on('changed', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev, true, this.borrowIndices[symbol]);
+          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev);
         })
         .on('error', console.log);
 
@@ -129,7 +125,7 @@ export default class StatefulBorrowers {
         })
         .on('changed', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onLiquidateBorrow(ev, true);
+          if (borrower in this.borrowers) this.borrowers[borrower].onLiquidateBorrow(ev);
         })
         .on('error', console.log);
 
@@ -143,9 +139,9 @@ export default class StatefulBorrowers {
         })
         .on('changed', (ev: EventData) => {
           const from: string = ev.returnValues.from;
-          if (from in this.borrowers) this.borrowers[from].onTransfer(ev, true);
+          if (from in this.borrowers) this.borrowers[from].onTransfer(ev);
           const to: string = ev.returnValues.to;
-          if (to in this.borrowers) this.borrowers[to].onTransfer(ev, true);
+          if (to in this.borrowers) this.borrowers[to].onTransfer(ev);
         })
         .on('error', console.log);
     });

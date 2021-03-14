@@ -17,6 +17,7 @@ interface LocalSignature {
 }
 
 interface CoinbaseReport {
+  message?: string,
   timestamp: string;
   messages: string[];
   signatures: string[];

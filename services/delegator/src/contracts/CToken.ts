@@ -2,7 +2,7 @@ import Web3Utils from 'web3-utils';
 
 import { Big, BindableContract, ContractCaller } from '@goldenagellc/web3-blocks';
 
-import { CTokens, CTokenSymbol, CTokenCreationBlocks } from '../types/CTokens';
+import { CTokens, CTokenSymbol, CTokenVersion, CTokenCreationBlocks, CTokenVersions } from '../types/CTokens';
 
 import abiEth from './abis/cether.json';
 import abiV1 from './abis/ctokenv1.json';
@@ -26,8 +26,25 @@ export enum CTokenEvents {
 }
 
 export class CToken extends BindableContract<typeof CTokenEvents> {
-  constructor(address: string, abi: any, creationBlock: number) {
-    super(address, abi as Web3Utils.AbiItem[], CTokenEvents, creationBlock);
+  public readonly symbol: CTokenSymbol;
+  public readonly version: CTokenVersion;
+
+  constructor(symbol: CTokenSymbol) {
+    let abi: Web3Utils.AbiItem[];
+    switch (CTokenVersions[symbol]) {
+      case CTokenVersion.V1:
+        abi = abiV1 as Web3Utils.AbiItem[];
+        break;
+      case CTokenVersion.V2:
+        abi = abiV2 as Web3Utils.AbiItem[];
+        break;
+      case CTokenVersion.ETH:
+        abi = abiEth as Web3Utils.AbiItem[];
+        break;
+    }
+    super(CTokens[symbol], abi, CTokenEvents, CTokenCreationBlocks[symbol]);
+    this.symbol = symbol;
+    this.version = CTokenVersions[symbol];
   }
 
   public exchangeRateStored(): ContractCaller<Big> {
@@ -66,17 +83,17 @@ export class CToken extends BindableContract<typeof CTokenEvents> {
 type InstanceMap<T> = { [_ in CTokenSymbol]: T };
 
 const cTokens: InstanceMap<CToken> = {
-  cBAT: new CToken(CTokens.cBAT, abiV1, CTokenCreationBlocks.cBAT),
-  cCOMP: new CToken(CTokens.cCOMP, abiV2, CTokenCreationBlocks.cCOMP),
-  cDAI: new CToken(CTokens.cDAI, abiV2, CTokenCreationBlocks.cDAI),
-  cETH: new CToken(CTokens.cETH, abiEth, CTokenCreationBlocks.cETH),
-  cREP: new CToken(CTokens.cREP, abiV1, CTokenCreationBlocks.cREP),
-  cSAI: new CToken(CTokens.cSAI, abiV1, CTokenCreationBlocks.cSAI),
-  cUNI: new CToken(CTokens.cUNI, abiV2, CTokenCreationBlocks.cUNI),
-  cUSDC: new CToken(CTokens.cUSDC, abiV1, CTokenCreationBlocks.cUSDC),
-  cUSDT: new CToken(CTokens.cUSDT, abiV2, CTokenCreationBlocks.cUSDT),
-  cWBTC: new CToken(CTokens.cWBTC, abiV1, CTokenCreationBlocks.cWBTC),
-  cZRX: new CToken(CTokens.cZRX, abiV1, CTokenCreationBlocks.cZRX),
+  cBAT: new CToken('cBAT'),
+  cCOMP: new CToken('cCOMP'),
+  cDAI: new CToken('cDAI'),
+  cETH: new CToken('cETH'),
+  cREP: new CToken('cREP'),
+  cSAI: new CToken('cSAI'),
+  cUNI: new CToken('cUNI'),
+  cUSDC: new CToken('cUSDC'),
+  cUSDT: new CToken('cUSDT'),
+  cWBTC: new CToken('cWBTC'),
+  cZRX: new CToken('cZRX'),
 };
 
 export default cTokens;

@@ -74,6 +74,7 @@ async function start() {
   statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
 
   setInterval(statefulBorrowers.randomCheck.bind(statefulBorrowers), 500);
+  // setInterval(() => provider.eth.isSyncing((e, s) => console.log(s)), 1000);
 }
 
 // const borrowers: ICompoundBorrower[] = [];
