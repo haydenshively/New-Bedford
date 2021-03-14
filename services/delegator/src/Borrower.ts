@@ -2,7 +2,14 @@ import Web3 from 'web3';
 
 import { Big } from '@goldenagellc/web3-blocks';
 
-import { CTokens, CTokenSymbol, cTokenSymbols, CTokenVersion, CTokenVersions } from './types/CTokens';
+import {
+  CTokens,
+  CTokenSymbol,
+  cTokenSymbols,
+  CTokenVersion,
+  CTokenVersions,
+  CTokenUnderlyingDecimals as decimals,
+} from './types/CTokens';
 import { CToken } from './contracts/CToken';
 import PriceLedger from './PriceLedger';
 import StatefulComptroller from './StatefulComptroller';
@@ -16,6 +23,15 @@ export interface IBorrowerPosition {
 interface ILiquidity {
   liquidity: Big;
   shortfall: Big;
+  symbols: CTokenSymbol[];
+  edges: ('min' | 'max')[];
+}
+
+interface ILiquidationInformation {
+  health: Big;
+  repayCToken: CTokens;
+  seizeCToken: CTokens;
+  revenueETH: Big;
   symbols: CTokenSymbol[];
   edges: ('min' | 'max')[];
 }
@@ -107,10 +123,15 @@ export default class Borrower {
           .div('1e+18')
           .times(collateralFactor)
           .div('1e+18')
-          .times(pricesUSD[edge]!),
+          .times(pricesUSD[edge]!)
+          .div(`1e+${decimals[symbol]}`),
       );
       borrow = borrow.plus(
-        position.borrow.times(borrowIndices[symbol]).div(position.borrowIndex).times(pricesUSD[edge]!),
+        position.borrow
+          .times(borrowIndices[symbol])
+          .div(position.borrowIndex)
+          .times(pricesUSD[edge]!)
+          .div(`1e+${decimals[symbol]}`),
       );
       symbols.push(symbol);
       edges.push(edge);
@@ -139,10 +160,13 @@ export default class Borrower {
     priceLedger: PriceLedger,
     exchangeRates: { [_ in CTokenSymbol]: Big },
     borrowIndices: { [_ in CTokenSymbol]: Big },
-  ): any | null {
+  ): ILiquidationInformation | null {
     const closeFactor = comptroller.getCloseFactor();
     const liquidationIncentive = comptroller.getLiquidationIncentive();
-    if (closeFactor === null || liquidationIncentive === null) return null;
+    if (closeFactor === null || liquidationIncentive === null) {
+      console.log('Borrower computation error: closeFactor|liquidationIncentive === null');
+      return null;
+    }
 
     let supplyTotal: Big = new Big('0'); // total available borrow
     let borrowTotal: Big = new Big('0'); // utilized borrow
@@ -159,27 +183,40 @@ export default class Borrower {
     let top2SeizeAmounts: Big[] = [new Big('0'), new Big('0')];
 
     for (let symbol of cTokenSymbols) {
-      // retrieve position and ensure everything is non-zero
+      // retrieve position and ensure it's valid
       const position = this.positions[symbol];
-      if (position.supply.eq('0') || position.borrow.eq('0') || position.borrowIndex.eq('0')) continue;
+      if (position.supply.eq('0') && position.borrow.eq('0')) continue;
+      if (position.borrow.gt('0') && position.borrowIndex.eq('0')) continue;
 
       // retrieve collateral factor, min price, and max price for this symbol
       const collateralFactor = comptroller.getCollateralFactor(symbol);
       const pricesUSD = priceLedger.getPrices(symbol);
-      if (collateralFactor === null || pricesUSD.min === null || pricesUSD.max === null) return null;
+      if (collateralFactor === null || pricesUSD.min === null || pricesUSD.max === null) {
+        console.log('Borrower computation error: collateralFactor|price.min|price.max === null');
+        continue;
+      }
 
       // liquidity calculations
       const edge: 'min' | 'max' = position.supply.gt('0') ? 'min' : 'max';
-      const supply = position.supply
-        .times(exchangeRates[symbol]) // 18 extra
-        .div('1e+18') // 0 extra (now in units of underlying)
-        .times(collateralFactor) // 18 extra
-        .div('1e+18') // 0 extra (still in units of underlying)
-        .times(pricesUSD[edge]!);
-      const borrow = position.borrow.times(borrowIndices[symbol]).div(position.borrowIndex).times(pricesUSD[edge]!);
+      const supply = position.supply.gt('0')
+        ? position.supply
+            .times(exchangeRates[symbol]) // 18 extra
+            .div('1e+18') // 0 extra (now in units of underlying)
+            .times(collateralFactor) // 18 extra
+            .div('1e+18') // 0 extra (still in units of underlying)
+            .times(pricesUSD[edge]!) // now in USD, with (6 + N) decimals
+            .div(`1e+${decimals[symbol]}`)
+        : new Big('0');
+      const borrow = position.borrow.gt('0')
+        ? position.borrow
+            .times(borrowIndices[symbol])
+            .div(position.borrowIndex)
+            .times(pricesUSD[edge]!)
+            .div(`1e+${decimals[symbol]}`)
+        : new Big('0');
 
       // revenue calculations
-      const seize = supply.div(liquidationIncentive).times('1e+18');
+      const seize = supply.times('1e+18').div(liquidationIncentive);
       const repay = borrow.times(closeFactor).div('1e+18');
 
       // update outer liquidity variables
@@ -214,7 +251,7 @@ export default class Borrower {
     if (top2RepayAssets[0] !== null && top2SeizeAssets[0] !== null) {
       const ableToPickBest =
         top2RepayAssets[0] !== top2SeizeAssets[0] || CTokenVersions[top2RepayAssets[0]] === CTokenVersion.V2;
-      
+
       const repayIdx = Number(!ableToPickBest && top2RepayAmounts[1].gt(top2SeizeAmounts[1]));
       const seizeIdx = Number(ableToPickBest ? false : !repayIdx);
 
@@ -229,27 +266,23 @@ export default class Borrower {
         } else {
           revenue = seizeAmount.times(liquidationIncentive.minus('1e+18')).div('1e+18');
         }
+
+        const priceETH = priceLedger.getPrices('cETH').min;
+        return {
+          health: supplyTotal.div(borrowTotal),
+          repayCToken: repayCToken,
+          seizeCToken: seizeCToken,
+          revenueETH: priceETH === null ? new Big('0') : revenue.times('1e+6').div(priceETH),
+          symbols: symbols,
+          edges: edges,
+        };
+      } else {
+        // console.log('Borrower computation error: only has one asset and not v2');
+        return null;
       }
-    }
-
-    let liquidity: Big;
-    let shortfall: Big;
-    if (supplyTotal.gt(borrowTotal)) {
-      liquidity = supplyTotal.minus(borrowTotal);
-      shortfall = new Big('0');
     } else {
-      liquidity = new Big('0');
-      shortfall = borrowTotal.minus(supplyTotal);
+      console.log('Borrower computation error: repay or seize assets === null');
+      return null;
     }
-
-    return {
-      liquidity: liquidity,
-      shortfall: shortfall,
-      symbols: symbols,
-      edges: edges,
-      repayCToken: repayCToken,
-      seizeCToken: seizeCToken,
-      expectedRevenue: revenue,
-    };
   }
 }

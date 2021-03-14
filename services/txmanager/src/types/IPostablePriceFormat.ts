@@ -1,4 +1,4 @@
-export default interface IOpenOraclePriceData {
+export default interface IPostablePriceFormat {
   messages: string[];
   signatures: string[];
   symbols: string[];

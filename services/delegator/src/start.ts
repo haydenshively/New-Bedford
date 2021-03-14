@@ -1,5 +1,4 @@
 import ipc from 'node-ipc';
-import { EventData } from 'web3-eth-contract';
 import Web3Utils from 'web3-utils';
 import winston from 'winston';
 
@@ -61,7 +60,7 @@ const statefulPricesCoinbase = new StatefulPricesCoinbase(
   process.env.CB_ACCESS_PASSPHRASE!,
 );
 
-async function start() {
+async function start(ipc: any) {
   await statefulBorrowers.init();
   await statefulComptroller.init();
   await statefulPricesOnChain.init();
@@ -73,37 +72,27 @@ async function start() {
 
   statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
 
-  setInterval(statefulBorrowers.randomCheck.bind(statefulBorrowers), 500);
+  setInterval(async () => {
+    const candidates = await statefulBorrowers.scan(statefulComptroller, priceLedger);
+    candidates.forEach((candidate) => {
+      ipc.emit('liquidation-candidate-add', candidate);
+    });
+  }, 4000);
   // setInterval(() => provider.eth.isSyncing((e, s) => console.log(s)), 1000);
 }
 
-// const borrowers: ICompoundBorrower[] = [];
-// addressesList.forEach(address => {
-//   cTokens.cBAT.getAccountSnapshot
-// });
+ipc.config.appspace = 'newbedford.';
+ipc.config.id = 'delegator';
+ipc.config.silent = true;
+ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
+  ipc.of['txmanager'].on('connect', () => {
+    console.log('Connected');
 
-start();
+    start(ipc.of['txmanager']);
 
-// symbols.forEach((symbol) => {
-//   const accrueInterestEmitter = cTokens[symbol].bindTo(provider).subscribeTo.AccrueInterest('latest');
-
-//   accrueInterestEmitter
-//     .on('connected', (id: string) => console.log(`Connected ${symbol} at ${id}`))
-//     .on('data', console.log)
-//     .on('changed', console.log)
-//     .on('error', console.log);
-// });
-
-// ipc.config.appspace = 'newbedford.';
-// ipc.config.id = 'delegator';
-// // ipc.config.silent = true;
-// ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
-//   ipc.of['txmanager'].on('connect', () => {
-//     console.log('Connected');
-
-//     ipc.of['txmanager'].emit('liquidation-candidate-add', 'My message');
-//   });
-// });
+    // ipc.of['txmanager'].emit('liquidation-candidate-add', 'My message');
+  });
+});
 
 process.on('SIGINT', () => {
   console.log('\nCaught interrupt signal');
@@ -112,6 +101,8 @@ process.on('SIGINT', () => {
   provider.eth.clearSubscriptions();
   // @ts-expect-error: We already checked that type is valid
   provider.eth.currentProvider.connection.destroy();
+
+  ipc.disconnect('txmanager');
 
   console.log('Exited cleanly');
   process.exit();

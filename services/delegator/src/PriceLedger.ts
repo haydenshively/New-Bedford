@@ -100,7 +100,7 @@ export default class PriceLedger {
 
       formatted.messages.push(postableData.message);
       formatted.signatures.push(postableData.signature);
-      formatted.signatures.push(postableData.key); // should equal local `key`
+      formatted.symbols.push(postableData.key); // should equal local `key`
     });
 
     if (didFindNull) return null;

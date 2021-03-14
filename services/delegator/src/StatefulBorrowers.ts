@@ -6,6 +6,9 @@ import { Big } from '@goldenagellc/web3-blocks';
 import { CTokenSymbol, cTokenSymbols } from './types/CTokens';
 import { CToken } from './contracts/CToken';
 import StatefulBorrower from './StatefulBorrower';
+import StatefulComptroller from './StatefulComptroller';
+import PriceLedger from './PriceLedger';
+import ILiquidationCandidate from './types/ILiquidationCandidate';
 
 export default class StatefulBorrowers {
   private readonly provider: Web3;
@@ -45,17 +48,49 @@ export default class StatefulBorrowers {
     });
   }
 
-  public async randomCheck(): Promise<void> {
-    const keys = Object.keys(this.borrowers);
-    const borrower = this.borrowers[keys[(keys.length * Math.random()) << 0]];
-    const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
-    if (!valid) console.log(`${borrower.address} has invalid state`);
+  // public async randomCheck(): Promise<void> {
+  //   const keys = Object.keys(this.borrowers);
+  //   const borrower = this.borrowers[keys[(keys.length * Math.random()) << 0]];
+  //   const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
+  //   if (!valid) console.log(`${borrower.address} has invalid state`);
+  // }
+
+  public async scan(comptroller: StatefulComptroller, priceLedger: PriceLedger): Promise<ILiquidationCandidate[]> {
+    const exchangeRateArray = await Promise.all(this.fetchExchangeRates());
+    const exchangeRates = Object.fromEntries(cTokenSymbols.map((symbol, i) => [symbol, exchangeRateArray[i]])) as {
+      [_ in CTokenSymbol]: Big;
+    };
+
+    const candidates: ILiquidationCandidate[] = [];
+
+    Object.keys(this.borrowers).forEach((address) => {
+      const borrower = this.borrowers[address];
+      const info = borrower.expectedRevenue(comptroller, priceLedger, exchangeRates, this.borrowIndices);
+
+      if (info !== null && info.health.lt('1')) {
+        const postable = priceLedger.getPostableFormat(info.symbols, info.edges);
+        if (postable === null) return;
+        candidates.push({
+          address: address,
+          repayCToken: info.repayCToken,
+          seizeCToken: info.seizeCToken,
+          pricesToReport: postable,
+          expectedRevenue: info.revenueETH.div('1e+6').toNumber(),
+        });
+      }
+    });
+
+    return candidates;
   }
 
   private fetchBorrowIndices(block: number): Promise<void>[] {
     return cTokenSymbols.map(async (symbol) => {
       this.borrowIndices[symbol] = await this.cTokens[symbol].borrowIndex()(this.provider, block);
     });
+  }
+
+  private fetchExchangeRates(): Promise<Big>[] {
+    return cTokenSymbols.map((symbol) => this.cTokens[symbol].exchangeRateStored()(this.provider));
   }
 
   private subscribe(block: number): void {
