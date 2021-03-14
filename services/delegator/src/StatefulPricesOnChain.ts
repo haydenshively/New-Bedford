@@ -7,7 +7,7 @@ import { Big } from '@goldenagellc/web3-blocks';
 import { OpenOraclePriceData } from './contracts/OpenOraclePriceData';
 import { UniswapAnchoredView } from './contracts/UniswapAnchoredView';
 import { CoinbaseKey, coinbaseKeyMap } from './types/CoinbaseKeys';
-import { CTokens, CTokenUnderlyingDecimals as decimals } from './types/CTokens';
+import { CTokens, cTokenUnderlyingDecimals as decimals } from './types/CTokens';
 import IPrice from './types/IPrice';
 import PriceLedger from './PriceLedger';
 

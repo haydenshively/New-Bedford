@@ -78,7 +78,6 @@ async function start(ipc: any) {
       ipc.emit('liquidation-candidate-add', candidate);
     });
   }, 4000);
-  // setInterval(() => provider.eth.isSyncing((e, s) => console.log(s)), 1000);
 }
 
 ipc.config.appspace = 'newbedford.';
@@ -89,8 +88,6 @@ ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
     console.log('Connected');
 
     start(ipc.of['txmanager']);
-
-    // ipc.of['txmanager'].emit('liquidation-candidate-add', 'My message');
   });
 });
 

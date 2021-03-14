@@ -2,7 +2,7 @@ import { EventData } from 'web3-eth-contract';
 import Web3 from 'web3';
 import winston from 'winston';
 
-import { CTokenReversed, CTokenSymbol, cTokenSymbols } from './types/CTokens';
+import { CTokensReversed, CTokenSymbol, cTokenSymbols } from './types/CTokens';
 import { CToken } from './contracts/CToken';
 import Borrower from './Borrower';
 
@@ -17,7 +17,7 @@ export default class StatefulBorrower extends Borrower {
   }
 
   public fetchAll(block: number): Promise<void>[] {
-    return cTokenSymbols.map(async (symbol) => this.fetch(symbol, block));
+    return cTokenSymbols.map((symbol) => this.fetch(symbol, block));
   }
 
   public async fetch(symbol: CTokenSymbol, block: number): Promise<void> {
@@ -89,7 +89,7 @@ export default class StatefulBorrower extends Borrower {
   }
 
   private getSymbolFor(address: string): CTokenSymbol | null {
-    const symbol = CTokenReversed[address];
+    const symbol = CTokensReversed[address];
     if (symbol === undefined) {
       console.warn(`Address ${address} wasn't found in reverse lookup table!`);
       return null;
