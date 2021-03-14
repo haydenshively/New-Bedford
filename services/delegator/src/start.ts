@@ -60,6 +60,10 @@ const statefulPricesCoinbase = new StatefulPricesCoinbase(
   process.env.CB_ACCESS_PASSPHRASE!,
 );
 
+let candidatesObj = {
+  previous: <string[]>[],
+};
+
 async function start(ipc: any) {
   await statefulBorrowers.init();
   await statefulComptroller.init();
@@ -76,10 +80,27 @@ async function start(ipc: any) {
 
   setInterval(async () => {
     const candidates = await statefulBorrowers.scan(statefulComptroller, priceLedger);
+    const candidatesSet = new Set<string>()
+
     candidates.forEach((candidate) => {
+      candidatesSet.add(candidate.address);
       ipc.emit('liquidation-candidate-add', candidate);
     });
+
+    candidatesObj.previous.forEach((address) => {
+      if (candidatesSet.has(address)) return;
+      ipc.emit('liquidation-candidate-remove', address);
+    })
+
+    candidatesObj.previous = Array.from(candidatesSet);
   }, 4000);
+}
+
+function stop() {
+  // @ts-expect-error: Web3 typings are incorrect for `clearSubscriptions()`
+  provider.eth.clearSubscriptions();
+  // @ts-expect-error: We already checked that type is valid
+  provider.eth.currentProvider.connection.destroy();
 }
 
 ipc.config.appspace = 'newbedford.';
@@ -90,18 +111,18 @@ ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
     console.log('Connected to TxManager\'s IPC');
     start(ipc.of['txmanager']);
   });
+
+  ipc.of['txmanager'].on('disconnect', () => {
+    console.log('Disconnected from TxManager\'s IPC');
+    stop();
+    process.exit();
+  })
 });
 
 process.on('SIGINT', () => {
   console.log('\nCaught interrupt signal');
-
-  // @ts-expect-error: Web3 typings are incorrect for `clearSubscriptions()`
-  provider.eth.clearSubscriptions();
-  // @ts-expect-error: We already checked that type is valid
-  provider.eth.currentProvider.connection.destroy();
-
   ipc.disconnect('txmanager');
-
+  stop();
   console.log('Exited cleanly');
   process.exit();
 });
