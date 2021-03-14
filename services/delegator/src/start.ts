@@ -66,9 +66,9 @@ async function start(ipc: any) {
   await statefulPricesOnChain.init();
   await statefulPricesCoinbase.init(4000);
 
-  console.log('Searching for borrowers using the Compound API...');
+  winston.log('info', 'Searching for borrowers using the Compound API...');
   const borrowers = await getBorrowers('10');
-  console.log(`Found ${borrowers.length} borrowers using the Compound API`);
+  winston.log('info', `Found ${borrowers.length} borrowers using the Compound API`);
 
   statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
 
@@ -85,8 +85,7 @@ ipc.config.id = 'delegator';
 ipc.config.silent = true;
 ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
   ipc.of['txmanager'].on('connect', () => {
-    console.log('Connected');
-
+    console.log('Connected to TxManager\'s IPC');
     start(ipc.of['txmanager']);
   });
 });

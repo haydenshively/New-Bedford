@@ -111,7 +111,7 @@ export default class StatefulPricesOnChain {
         const summaryAfter = this.ledger.summaryTextFor(knownKey)?.replace(knownKey, 'After');
         winston.info(`⚠️ ${knownKey} price suffered chain reorganization!\n${summaryBefore}\n${summaryAfter}`);
       })
-      .on('error', console.log);
+      .on('error', console.error);
   }
 
   private propogateToLedger(key: CoinbaseKey): void {

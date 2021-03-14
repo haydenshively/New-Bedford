@@ -124,7 +124,7 @@ export default class StatefulComptroller {
           logIndex: ev.logIndex,
         };
       })
-      .on('error', console.log);
+      .on('error', console.error);
   }
 
   private subscribeToLiquidationIncentive(block: number): void {
@@ -152,7 +152,7 @@ export default class StatefulComptroller {
           logIndex: ev.logIndex,
         };
       })
-      .on('error', console.log);
+      .on('error', console.error);
   }
 
   private subscribeToCollateralFactors(block: number): void {
@@ -190,6 +190,6 @@ export default class StatefulComptroller {
           }
         });
       })
-      .on('error', console.log);
+      .on('error', console.error);
   }
 }
