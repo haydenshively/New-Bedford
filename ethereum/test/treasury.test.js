@@ -43,6 +43,25 @@ contract("Treasury Test", (accounts) => {
     assert.equal(balanceStored.toString(10, 0), three);
   });
 
+  it("should unfund and send back to owner @latest-block", async () => {
+    const treasury = await Treasury.deployed();
+
+    // manually read owner addresses from storage (since they're private)
+    const owner = await web3.eth.getStorageAt(treasury.address, "0");
+
+    // send 4 ETH to the Treasury for owner
+    const four = "4" + "0".repeat(18);
+    await treasury.fund(owner, { value: four });
+    // retrieve 3 ETH from Treasury for owner
+    const three = "3" + "0".repeat(18);
+    await treasury.unfund(three, { from: owner });
+
+    // check that stored balances match expectations
+    const balanceStored = await treasury.balanceStored();
+
+    assert.equal(balanceStored.toString(10, 0), four);
+  });
+
   it("should set liquidator from owner account @latest-block", async () => {
     const treasury = await Treasury.deployed();
     const liquidator = await Liquidator.deployed();

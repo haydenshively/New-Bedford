@@ -40,12 +40,14 @@ export default class StatefulBorrowers {
     this.subscribe(block);
   }
 
-  public async push(addresses: string[]): Promise<void> {
+  public async push(addresses: string[]): Promise<void[]> {
     const block = await this.provider.eth.getBlockNumber();
+    const promises = <Promise<void>[]>[];
     addresses.forEach((address) => {
       this.borrowers[address] = new StatefulBorrower(address, this.provider, this.cTokens);
-      this.borrowers[address].fetchAll(block);
+      promises.push(...this.borrowers[address].fetchAll(block));
     });
+    return Promise.all(promises);
   }
 
   public async scan(comptroller: StatefulComptroller, priceLedger: PriceLedger): Promise<ILiquidationCandidate[]> {

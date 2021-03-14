@@ -70,7 +70,9 @@ async function start(ipc: any) {
   const borrowers = await getBorrowers('10');
   winston.log('info', `Found ${borrowers.length} borrowers using the Compound API`);
 
+  const borrowersPushStart = Date.now();
   statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
+  winston.log('info', `Fetched all borrower data in ${Date.now() - borrowersPushStart} ms`);
 
   setInterval(async () => {
     const candidates = await statefulBorrowers.scan(statefulComptroller, priceLedger);
