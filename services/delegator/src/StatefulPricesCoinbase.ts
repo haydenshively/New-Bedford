@@ -40,8 +40,9 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
       const updatedKeys: CoinbaseKey[] = [];
 
       const report = await this.fetchCoinbasePrices();
-      if (report.messages === undefined) {
-        console.log(report);
+      if (report.message === 'request timestamp expired') {
+        console.log('Coinbase fetch failed -- request timestamp outdated');
+        return [];
       }
       for (let i = 0; i < report.messages.length; i += 1) {
         const message = report.messages[i];
@@ -58,7 +59,7 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
       }
       return updatedKeys;
     } catch (e) {
-      if (e instanceof FetchError) console.log('Coinbase fetch failed. Connection probably timed out');
+      if (e instanceof FetchError) console.log('Coinbase fetch failed -- probably lost internet');
       else console.log(e);
       return [];
     }

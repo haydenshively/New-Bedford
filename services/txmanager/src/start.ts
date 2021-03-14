@@ -5,6 +5,7 @@ import winston from 'winston';
 import { ProviderGroup, Wallet } from '@goldenagellc/web3-blocks';
 
 import EthSubscriber from './EthSubscriber';
+import ILiquidationCandidate from './types/ILiquidationCandidate';
 import IncognitoQueue from './IncognitoQueue';
 import LatencyInterpreter from './LatencyInterpreter';
 import LatencyWatcher from './LatencyWatcher';
@@ -72,7 +73,9 @@ ipc.config.id = 'txmanager';
 ipc.config.silent = true;
 ipc.serve('/tmp/newbedford.txmanager', () => {
   ipc.server.on('liquidation-candidate-add', (message) => {
-    console.log(message);
+    const candidate = message as ILiquidationCandidate;
+    if (candidate.expectedRevenue < 0.1) return;
+    txmanager.addLiquidationCandidate(message as ILiquidationCandidate)
   });
   ipc.server.on('liquidation-candidate-remove', (message) => {
     console.log(message);
@@ -82,6 +85,7 @@ ipc.server.start();
 
 process.on('SIGINT', () => {
   console.log('\nCaught interrupt signal');
+  ipc.server.stop();
   txmanager.stop();
 
   provider.eth.clearSubscriptions();

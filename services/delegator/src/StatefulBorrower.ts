@@ -2,158 +2,90 @@ import { EventData } from 'web3-eth-contract';
 import Web3 from 'web3';
 import winston from 'winston';
 
-import { Big } from '@goldenagellc/web3-blocks';
-
 import { CTokenReversed, CTokenSymbol, cTokenSymbols } from './types/CTokens';
 import { CToken } from './contracts/CToken';
-import Borrower, { IBorrowerPosition } from './Borrower';
+import Borrower from './Borrower';
 
 export default class StatefulBorrower extends Borrower {
-  protected readonly fetchBlock: number = 0;
-  private _didInit: boolean = false;
+  private readonly provider: Web3;
+  private readonly cTokens: { [_ in CTokenSymbol]: CToken };
 
-  constructor(address: string, fetchBlock: number) {
+  constructor(address: string, provider: Web3, cTokens: { [_ in CTokenSymbol]: CToken }) {
     super(address);
-    this.fetchBlock = fetchBlock;
+    this.provider = provider;
+    this.cTokens = cTokens;
   }
 
-  public get didInit(): boolean {
-    return this._didInit;
+  public fetchAll(block: number): Promise<void>[] {
+    return cTokenSymbols.map(async (symbol) => this.fetch(symbol, block));
   }
 
-  public async init(provider: Web3, cTokens: { [_ in CTokenSymbol]: CToken }): Promise<void> {
-    if (this._didInit) {
-      console.warn('Already initialized borrower. Aborting!');
-      return;
-    }
+  public async fetch(symbol: CTokenSymbol, block: number): Promise<void> {
+    const snapshot = await this.cTokens[symbol].getAccountSnapshot(this.address)(this.provider, block);
+    if (snapshot.error !== '0') return;
 
-    let didInit = true;
-    for (let symbol of cTokenSymbols) {
-      const snapshot = await cTokens[symbol].getAccountSnapshot(this.address)(provider, this.fetchBlock);
-      if (snapshot.error !== '0') {
-        didInit = false;
-        continue;
-      }
+    const borrowIndex = await this.cTokens[symbol].borrowIndex()(this.provider, block);
 
-      const position = this.positions[symbol];
-      position.supply = position.supply.plus(snapshot.cTokenBalance);
-      position.borrow = position.borrow.plus(snapshot.borrowBalance);
-
-      const borrowIndex = await cTokens[symbol].borrowIndex()(provider, this.fetchBlock);
-      if (borrowIndex.gt(position.borrowIndex)) position.borrowIndex = borrowIndex;
-    }
-    this._didInit = didInit;
+    const position = this.positions[symbol];
+    position.supply = snapshot.cTokenBalance;
+    position.borrow = snapshot.borrowBalance;
+    position.borrowIndex = borrowIndex;
   }
 
-  public onMint(event: EventData, undo = false): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
+  public onMint(event: EventData): Promise<void> | void {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
-    const position = this.positions[symbol];
 
-    if (undo) {
-      position.supply = position.supply.minus(event.returnValues.mintTokens);
-      winston.info(`🪙 *${symbol} Mint* by ${this.address.slice(2, 8)} removed from chain`);
-    } else {
-      position.supply = position.supply.plus(event.returnValues.mintTokens);
-      winston.info(`🪙 *${symbol} Mint* by ${this.address.slice(2, 8)}`);
-    }
+    winston.info(`🟢 *${symbol} Mint* by ${this.address.slice(2, 8)}`);
+    return this.fetch(symbol, event.blockNumber);
   }
 
-  public onRedeem(event: EventData, undo = false): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
+  public onRedeem(event: EventData): Promise<void> | void {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
-    const position = this.positions[symbol];
 
-    if (undo) {
-      position.supply = position.supply.plus(event.returnValues.redeemTokens);
-      winston.info(`🪙 *${symbol} Redeem* by ${this.address.slice(2, 8)} removed from chain`);
-    } else {
-      position.supply = position.supply.minus(event.returnValues.redeemTokens);
-      winston.info(`🪙 *${symbol} Redeem* by ${this.address.slice(2, 8)}`);
-    }
+    winston.info(`🟢 *${symbol} Redeem* by ${this.address.slice(2, 8)}`);
+    return this.fetch(symbol, event.blockNumber);
   }
 
-  public onBorrow(event: EventData, undo = false, currentBorrowIndex: Big): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
+  public onBorrow(event: EventData): Promise<void> | void {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
-    const position = this.positions[symbol];
 
-    if (undo) {
-      position.borrow = position.borrow.minus(event.returnValues.borrowAmount);
-      winston.info(`🪙 *${symbol} Borrow* by ${this.address.slice(2, 8)} removed from chain`);
-    } else {
-      position.borrow = new Big(event.returnValues.accountBorrows);
-      position.borrowIndex = currentBorrowIndex;
-      winston.info(`🪙 *${symbol} Borrow* by ${this.address.slice(2, 8)}`);
-    }
+    winston.info(`🔵 *${symbol} Borrow* by ${this.address.slice(2, 8)}`);
+    return this.fetch(symbol, event.blockNumber);
   }
 
-  public onRepayBorrow(event: EventData, undo = false, currentBorrowIndex: Big): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
+  public onRepayBorrow(event: EventData): Promise<void> | void {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
-    const position = this.positions[symbol];
 
-    if (undo) {
-      position.borrow = position.borrow.plus(event.returnValues.repayAmount);
-      winston.info(`🪙 *${symbol} Repay* by ${this.address.slice(2, 8)} removed from chain`);
-    } else {
-      position.borrow = new Big(event.returnValues.accountBorrows);
-      position.borrowIndex = currentBorrowIndex;
-      winston.info(`🪙 *${symbol} Repay* by ${this.address.slice(2, 8)}`);
-    }
+    winston.info(`🔵 *${symbol} Repay* by ${this.address.slice(2, 8)}`);
+    return this.fetch(symbol, event.blockNumber);
   }
 
-  public onLiquidateBorrow(event: EventData, undo = false): void {
-    if (event.blockNumber <= this.fetchBlock) return;
+  public onLiquidateBorrow(event: EventData, undo = false): Promise<void[]> | void {
+    const symbolRepay = this.getSymbolFor(event.address);
+    const symbolSeize = this.getSymbolFor(event.returnValues.cTokenCollateral);
+    if (symbolRepay === null || symbolSeize === null) return;
 
-    const symbolA = this.getSymbolFor(event.address);
-    if (symbolA === null) return;
-    const positionA = this.positions[symbolA];
-    const symbolB = this.getSymbolFor(event.returnValues.cTokenCollateral);
-    if (symbolB === null) return;
-    const positionB = this.positions[symbolB];
-    if (positionA === null || positionB === null) return;
-
-    if (undo) {
-      positionA.borrow = positionA.borrow.plus(event.returnValues.repayAmount);
-      positionB.supply = positionB.supply.plus(event.returnValues.seizeTokens);
-      winston.info(`💦 Liquidation ${event.transactionHash.slice(0, 10)} removed from chain`);
-    } else {
-      positionA.borrow = positionA.borrow.minus(event.returnValues.repayAmount);
-      positionB.supply = positionB.supply.minus(event.returnValues.seizeTokens);
-      winston.info(
-        `💦 ${this.address.slice(
-          2,
-          8,
-        )} had their *${symbolA} liquidated* and ${symbolB} seized by ${event.returnValues.liquidator.slice(2, 8)}`,
-      );
-    }
+    winston.info(
+      `🟣 ${this.address.slice(
+        2,
+        8,
+      )} had their *${symbolRepay} liquidated* and ${symbolSeize} seized by ${event.returnValues.liquidator.slice(
+        2,
+        8,
+      )}`,
+    );
+    return Promise.all([this.fetch(symbolRepay, event.blockNumber), this.fetch(symbolSeize, event.blockNumber)]);
   }
 
-  public onTransfer(event: EventData, undo = false): void {
-    if (event.blockNumber <= this.fetchBlock) return;
-
+  public onTransfer(event: EventData): Promise<void> | void {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
-    const position = this.positions[symbol];
 
-    // Make sure that this borrower is the `to` address, and that this wasn't a Mint/Redeem side-effect
-    const shouldAdd = this.address === event.returnValues.to && event.address !== event.returnValues.from;
-    if (shouldAdd) {
-      if (undo) position.supply = position.supply.minus(event.returnValues.amount);
-      else position.supply = position.supply.plus(event.returnValues.amount);
-    } else {
-      if (undo) position.supply = position.supply.plus(event.returnValues.amount);
-      else position.supply = position.supply.minus(event.returnValues.amount);
-    }
+    return this.fetch(symbol, event.blockNumber);
   }
 
   private getSymbolFor(address: string): CTokenSymbol | null {

@@ -6,6 +6,9 @@ import { Big } from '@goldenagellc/web3-blocks';
 import { CTokenSymbol, cTokenSymbols } from './types/CTokens';
 import { CToken } from './contracts/CToken';
 import StatefulBorrower from './StatefulBorrower';
+import StatefulComptroller from './StatefulComptroller';
+import PriceLedger from './PriceLedger';
+import ILiquidationCandidate from './types/ILiquidationCandidate';
 
 export default class StatefulBorrowers {
   private readonly provider: Web3;
@@ -40,26 +43,54 @@ export default class StatefulBorrowers {
   public async push(addresses: string[]): Promise<void> {
     const block = await this.provider.eth.getBlockNumber();
     addresses.forEach((address) => {
-      this.borrowers[address] = new StatefulBorrower(address, block);
-      this.borrowers[address].init(this.provider, this.cTokens);
+      this.borrowers[address] = new StatefulBorrower(address, this.provider, this.cTokens);
+      this.borrowers[address].fetchAll(block);
     });
   }
 
-  public async randomCheck(): Promise<void> {
-    const keys = Object.keys(this.borrowers);
-    const borrower = this.borrowers[keys[(keys.length * Math.random()) << 0]];
-    if (!borrower.didInit) {
-      console.log(`${borrower.address} hasn't been initialized yet`);
-    } else {
-      const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
-      if (!valid) console.log(`${borrower.address} has invalid state`);
-    }
+  // public async randomCheck(): Promise<void> {
+  //   const keys = Object.keys(this.borrowers);
+  //   const borrower = this.borrowers[keys[(keys.length * Math.random()) << 0]];
+  //   const valid = await borrower.verify(this.provider, this.cTokens, this.borrowIndices, 0.01);
+  //   if (!valid) console.log(`${borrower.address} has invalid state`);
+  // }
+
+  public async scan(comptroller: StatefulComptroller, priceLedger: PriceLedger): Promise<ILiquidationCandidate[]> {
+    const exchangeRateArray = await Promise.all(this.fetchExchangeRates());
+    const exchangeRates = Object.fromEntries(cTokenSymbols.map((symbol, i) => [symbol, exchangeRateArray[i]])) as {
+      [_ in CTokenSymbol]: Big;
+    };
+
+    const candidates: ILiquidationCandidate[] = [];
+
+    Object.keys(this.borrowers).forEach((address) => {
+      const borrower = this.borrowers[address];
+      const info = borrower.expectedRevenue(comptroller, priceLedger, exchangeRates, this.borrowIndices);
+
+      if (info !== null && info.health.lt('1')) {
+        const postable = priceLedger.getPostableFormat(info.symbols, info.edges);
+        if (postable === null) return;
+        candidates.push({
+          address: address,
+          repayCToken: info.repayCToken,
+          seizeCToken: info.seizeCToken,
+          pricesToReport: postable,
+          expectedRevenue: info.revenueETH.div('1e+6').toNumber(),
+        });
+      }
+    });
+
+    return candidates;
   }
 
   private fetchBorrowIndices(block: number): Promise<void>[] {
     return cTokenSymbols.map(async (symbol) => {
       this.borrowIndices[symbol] = await this.cTokens[symbol].borrowIndex()(this.provider, block);
     });
+  }
+
+  private fetchExchangeRates(): Promise<Big>[] {
+    return cTokenSymbols.map((symbol) => this.cTokens[symbol].exchangeRateStored()(this.provider));
   }
 
   private subscribe(block: number): void {
@@ -81,7 +112,7 @@ export default class StatefulBorrowers {
         })
         .on('changed', (ev: EventData) => {
           const minter: string = ev.returnValues.minter;
-          if (minter in this.borrowers) this.borrowers[minter].onMint(ev, true);
+          if (minter in this.borrowers) this.borrowers[minter].onMint(ev);
         })
         .on('error', console.log);
 
@@ -93,7 +124,7 @@ export default class StatefulBorrowers {
         })
         .on('changed', (ev: EventData) => {
           const redeemer: string = ev.returnValues.redeemer;
-          if (redeemer in this.borrowers) this.borrowers[redeemer].onRedeem(ev, true);
+          if (redeemer in this.borrowers) this.borrowers[redeemer].onRedeem(ev);
         })
         .on('error', console.log);
 
@@ -101,11 +132,11 @@ export default class StatefulBorrowers {
         .Borrow(block)
         .on('data', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev, false, this.borrowIndices[symbol]);
+          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
         })
         .on('changed', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev, true, this.borrowIndices[symbol]);
+          if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
         })
         .on('error', console.log);
 
@@ -113,11 +144,11 @@ export default class StatefulBorrowers {
         .RepayBorrow(block)
         .on('data', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev, false, this.borrowIndices[symbol]);
+          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev);
         })
         .on('changed', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev, true, this.borrowIndices[symbol]);
+          if (borrower in this.borrowers) this.borrowers[borrower].onRepayBorrow(ev);
         })
         .on('error', console.log);
 
@@ -129,7 +160,7 @@ export default class StatefulBorrowers {
         })
         .on('changed', (ev: EventData) => {
           const borrower: string = ev.returnValues.borrower;
-          if (borrower in this.borrowers) this.borrowers[borrower].onLiquidateBorrow(ev, true);
+          if (borrower in this.borrowers) this.borrowers[borrower].onLiquidateBorrow(ev);
         })
         .on('error', console.log);
 
@@ -143,9 +174,9 @@ export default class StatefulBorrowers {
         })
         .on('changed', (ev: EventData) => {
           const from: string = ev.returnValues.from;
-          if (from in this.borrowers) this.borrowers[from].onTransfer(ev, true);
+          if (from in this.borrowers) this.borrowers[from].onTransfer(ev);
           const to: string = ev.returnValues.to;
-          if (to in this.borrowers) this.borrowers[to].onTransfer(ev, true);
+          if (to in this.borrowers) this.borrowers[to].onTransfer(ev);
         })
         .on('error', console.log);
     });

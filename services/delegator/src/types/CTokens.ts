@@ -14,6 +14,12 @@ export enum CTokens {
   cZRX = '0xB3319f5D18Bc0D84dD1b4825Dcde5d5f7266d407',
 }
 
+export enum CTokenVersion {
+  V1,
+  V2,
+  ETH,
+}
+
 export type CTokenSymbol = keyof typeof CTokens;
 export const cTokenSymbols = <CTokenSymbol[]>Object.keys(CTokens);
 
@@ -45,6 +51,20 @@ export const CTokenUnderlyingDecimals: { [_ in CTokenSymbol]: number } = {
   cZRX: 18,
 };
 
+export const CTokenVersions: { [_ in CTokenSymbol]: CTokenVersion } = {
+  cBAT: CTokenVersion.V1,
+  cCOMP: CTokenVersion.V2,
+  cDAI: CTokenVersion.V2,
+  cETH: CTokenVersion.ETH,
+  cREP: CTokenVersion.V1,
+  cSAI: CTokenVersion.V1,
+  cUNI: CTokenVersion.V2,
+  cUSDC: CTokenVersion.V1,
+  cUSDT: CTokenVersion.V2,
+  cWBTC: CTokenVersion.V1,
+  cZRX: CTokenVersion.V1,
+};
+
 export const CTokenCoinbaseKeys: { [_ in CTokenSymbol]: CoinbaseKey | null } = {
   cBAT: 'BAT',
   cCOMP: 'COMP',
@@ -59,4 +79,6 @@ export const CTokenCoinbaseKeys: { [_ in CTokenSymbol]: CoinbaseKey | null } = {
   cZRX: 'ZRX',
 };
 
-export const CTokenReversed: { [i: string]: CTokenSymbol } = Object.fromEntries(cTokenSymbols.map((symbol) => [CTokens[symbol], symbol]));
+export const CTokenReversed: { [i: string]: CTokenSymbol } = Object.fromEntries(
+  cTokenSymbols.map((symbol) => [CTokens[symbol], symbol]),
+);
