@@ -44,13 +44,15 @@ export enum Instances {
   // v1,
   // v2,
   // ...
+  adam,
   latest,
 }
 
 type InstanceMap<T> = { [d in keyof typeof Instances]: T };
 
 const treasuries: InstanceMap<Treasury> = {
-  latest: new Treasury('0x6d21F25029A462B5aEEC2d4772de674fbD908d1e'),
+  adam: new Treasury('0x6d21F25029A462B5aEEC2d4772de674fbD908d1e'),
+  latest: new Treasury('0xbe11AC1a02DDfb6d8e8393218164f9Ece884fcE0'),
 };
 
 export default treasuries;
