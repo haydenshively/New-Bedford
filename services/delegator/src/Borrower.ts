@@ -163,7 +163,7 @@ export default class Borrower {
         return null;
       }
     } else {
-      console.log('Borrower computation error: repay or seize assets === null');
+      // console.log('Borrower computation error: repay or seize assets === null');
       return null;
     }
   }

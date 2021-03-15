@@ -10,6 +10,8 @@ import PriceLedger from './PriceLedger';
 export default class StatefulPricesCoinbase extends CoinbaseReporter {
   private readonly ledger: PriceLedger;
   private fetchHandle: NodeJS.Timeout | null = null;
+  
+  private consumers: (() => Promise<void> | void)[] = [];
 
   constructor(
     ledger: PriceLedger,
@@ -28,11 +30,19 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
     this.fetchHandle = setInterval(this.update.bind(this), fetchInterval);
   }
 
+  public register(consumer: () => Promise<void> | void): number {
+    return this.consumers.push(consumer) - 1
+  }
+
+  public remove(consumerId: number): void {
+    this.consumers.splice(consumerId, 1);
+  }
+
   private async update(): Promise<void> {
     const updatedKeys = await this.fetch();
-
-    // TODO: trigger callbacks
-    // if (updatedKeys.length > 0) winston.info(this.ledger.summaryText);
+    if (updatedKeys.length > 0) {
+      this.consumers.forEach((consumer) => consumer());
+    }
   }
 
   private async fetch(): Promise<CoinbaseKey[]> {
@@ -63,5 +73,9 @@ export default class StatefulPricesCoinbase extends CoinbaseReporter {
       else console.warn(e);
       return [];
     }
+  }
+
+  public stop(): void {
+    if (this.fetchHandle !== null) clearInterval(this.fetchHandle);
   }
 }

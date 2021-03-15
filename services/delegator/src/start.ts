@@ -64,7 +64,24 @@ let candidatesObj = {
   previous: <string[]>[],
 };
 
-async function start(ipc: any) {
+async function scan(ipcTxManager: any) {
+  const candidates = await statefulBorrowers.scan(statefulComptroller, priceLedger);
+  const candidatesSet = new Set<string>();
+
+  candidates.forEach((candidate) => {
+    candidatesSet.add(candidate.address);
+    ipcTxManager.emit('liquidation-candidate-add', candidate);
+  });
+
+  candidatesObj.previous.forEach((address) => {
+    if (candidatesSet.has(address)) return;
+    ipcTxManager.emit('liquidation-candidate-remove', address);
+  });
+
+  candidatesObj.previous = Array.from(candidatesSet);
+}
+
+async function start(ipcTxManager: any) {
   await statefulBorrowers.init();
   await statefulComptroller.init();
   await statefulPricesOnChain.init();
@@ -78,25 +95,12 @@ async function start(ipc: any) {
   statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
   winston.log('info', `Fetched all borrower data in ${Date.now() - borrowersPushStart} ms`);
 
-  setInterval(async () => {
-    const candidates = await statefulBorrowers.scan(statefulComptroller, priceLedger);
-    const candidatesSet = new Set<string>()
-
-    candidates.forEach((candidate) => {
-      candidatesSet.add(candidate.address);
-      ipc.emit('liquidation-candidate-add', candidate);
-    });
-
-    candidatesObj.previous.forEach((address) => {
-      if (candidatesSet.has(address)) return;
-      ipc.emit('liquidation-candidate-remove', address);
-    })
-
-    candidatesObj.previous = Array.from(candidatesSet);
-  }, 4000);
+  statefulPricesCoinbase.register(() => scan(ipcTxManager));
+  provider.eth.subscribe('newBlockHeaders').on('data', (_block) => setTimeout(() => scan(ipcTxManager), 2000));
 }
 
 function stop() {
+  statefulPricesCoinbase.stop();
   // @ts-expect-error: Web3 typings are incorrect for `clearSubscriptions()`
   provider.eth.clearSubscriptions();
   // @ts-expect-error: We already checked that type is valid
@@ -108,15 +112,15 @@ ipc.config.id = 'delegator';
 ipc.config.silent = true;
 ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
   ipc.of['txmanager'].on('connect', () => {
-    console.log('Connected to TxManager\'s IPC');
+    console.log("Connected to TxManager's IPC");
     start(ipc.of['txmanager']);
   });
 
   ipc.of['txmanager'].on('disconnect', () => {
-    console.log('Disconnected from TxManager\'s IPC');
+    console.log("Disconnected from TxManager's IPC");
     stop();
     process.exit();
-  })
+  });
 });
 
 process.on('SIGINT', () => {
