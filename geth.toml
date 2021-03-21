@@ -1,13 +1,13 @@
 [Eth]
 NetworkId = 1
 SyncMode = "fast"
-DiscoveryURLs = ["enrtree://AKA3AM6LPBYEUDMVNU3BSVQJ5AD45Y7YPOHJLEF6W26QOE4VTUDPE@all.mainnet.ethdisco.net"]
+EthDiscoveryURLs = ["enrtree://AKA3AM6LPBYEUDMVNU3BSVQJ5AD45Y7YPOHJLEF6W26QOE4VTUDPE@all.mainnet.ethdisco.net"]
 NoPruning = false
 NoPrefetch = false
 LightPeers = 100
 UltraLightFraction = 75
 DatabaseCache = 3500
-DatabaseFreezer = ""
+DatabaseFreezer = "/mnt/T5/geth/chaindata/ancient"
 TrieCleanCache = 1050
 TrieDirtyCache = 1750
 TrieTimeout = 3600000000000
@@ -53,14 +53,8 @@ Lifetime = 10800000000000
 Blocks = 20
 Percentile = 80
 
-[Shh]
-MaxMessageSize = 1048576
-MinimumAcceptedPOW = 2e-01
-RestrictConnectionBetweenLightClients = true
-
 [Node]
 DataDir = "/home/haydenshively/.ethereum"
-NoUSB = true
 IPCPath = "/srv/ethereum/geth.ipc"
 HTTPHost = ""
 HTTPPort = 8545
