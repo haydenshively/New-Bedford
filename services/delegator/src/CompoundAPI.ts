@@ -70,7 +70,7 @@ const getBorrowers = async (minBorrow_Eth: string) => {
     pageCount = result.pagination_summary.total_pages;
     i++;
 
-    await sleep(100); // Avoid rate limiting
+    await sleep(200); // Avoid rate limiting
   } while (i <= pageCount);
 
   return borrowers;

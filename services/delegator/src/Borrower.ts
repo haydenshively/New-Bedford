@@ -75,7 +75,7 @@ export default class Borrower {
       const pricesUSD = priceLedger.getPrices(symbol);
       if (collateralFactor === null || pricesUSD.min === null || pricesUSD.max === null) {
         console.log('Borrower computation error: collateralFactor|price.min|price.max === null');
-        continue;
+        return null;
       }
 
       // liquidity calculations
@@ -159,11 +159,11 @@ export default class Borrower {
           edges: edges,
         };
       } else {
-        // console.log('Borrower computation error: only has one asset and not v2');
+        // console.log(`Borrower computation error: ${this.address.slice(2, 8)} only has one asset and not v2`);
         return null;
       }
     } else {
-      // console.log('Borrower computation error: repay or seize assets === null');
+      // console.log(`Borrower computation error: ${this.address.slice(2, 8)} repay or seize is null`);
       return null;
     }
   }

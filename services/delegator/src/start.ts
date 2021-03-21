@@ -71,6 +71,7 @@ async function scan(ipcTxManager: any) {
   candidates.forEach((candidate) => {
     candidatesSet.add(candidate.address);
     ipcTxManager.emit('liquidation-candidate-add', candidate);
+    // winston.log('info', `🐳 Found ${candidate.address.slice(0, 6)} for revenue of ${candidate.expectedRevenue} Eth`);
   });
 
   candidatesObj.previous.forEach((address) => {
@@ -88,15 +89,15 @@ async function start(ipcTxManager: any) {
   await statefulPricesCoinbase.init(4000);
 
   winston.log('info', 'Searching for borrowers using the Compound API...');
-  const borrowers = await getBorrowers('10');
+  const borrowers = await getBorrowers('1');
   winston.log('info', `Found ${borrowers.length} borrowers using the Compound API`);
 
   const borrowersPushStart = Date.now();
-  statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
+  await statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
   winston.log('info', `Fetched all borrower data in ${Date.now() - borrowersPushStart} ms`);
 
   statefulPricesCoinbase.register(() => scan(ipcTxManager));
-  provider.eth.subscribe('newBlockHeaders').on('data', (_block) => setTimeout(() => scan(ipcTxManager), 2000));
+  provider.eth.subscribe('newBlockHeaders').on('data', (_block) => setTimeout(() => scan(ipcTxManager), 500));
 }
 
 function stop() {
