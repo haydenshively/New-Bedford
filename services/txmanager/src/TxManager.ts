@@ -19,7 +19,7 @@ const competitorsFrom = new Set(competitors.from as string[]);
 const competitorsTo = new Set(competitors.to as string[]);
 
 const INITIAL_GAS_PRICE: Big = new Big('100000000000');
-const DEADLINE_CUSHION = 500;
+const DEADLINE_CUSHION = 1000;
 
 export default class TxManager extends CandidatePool implements IEthSubscriptionConsumer {
   private readonly incognito: IncognitoQueue;
@@ -83,36 +83,38 @@ export default class TxManager extends CandidatePool implements IEthSubscription
   private periodic(): void {
     if (!this.isActive) return; // Break out of periodic loop (no immediate reschedule)
 
-    let target = this.candidates[0];
+    let targets = [...this.candidates];
     if (!this.didStartBidding && this.didSeeCompetitors) {
-      const numCandidates = this.candidates.length;
+      const numCandidates = targets.length;
       // We know we don't have the best latency, so if competitors exist we stand down...
       if (numCandidates === 1) {
         this.tx = null;
         this.schedulePeriodic();
+        winston.info(`⚖️ *Standing down* due to competitors`);
         return;
       }
-      // ...but if alternative targets exist, we may as well try them
+      // ...but if alternative targets exist, we may as well try them (but no more than 3)
 
       // TODO in this for loop, we could check to make sure that our alternative candidate
-      // is liquidatable using the best candidate's prices (or newer prices)
+      // is liquidatable using the best candidate's prices (or newer prices) since those
+      // will probably get posted earlier in the block than our transaction...
       // for (let i = 1; i < numCandidates; i++) {}
-      target = this.candidates[1];
+      targets = targets.slice(1, 4);
     }
 
     const tx = liquidators.latest.liquidate(
-      target.pricesToReport.messages,
-      target.pricesToReport.signatures,
-      target.pricesToReport.symbols,
-      [target.address],
-      [target.repayCToken],
-      [target.seizeCToken],
+      targets[0].pricesToReport.messages,
+      targets[0].pricesToReport.signatures,
+      targets[0].pricesToReport.symbols,
+      targets.map((target) => target.address),
+      targets.map((target) => target.repayCToken),
+      targets.map((target) => target.seizeCToken),
       true,
     );
     tx.to = this.liquidatorWrapper!;
 
     // Assume expectedRevenue is just plain ETH (no extra zeros or anything)
-    this.gasPriceMax = new Big(target.expectedRevenue * 1e18).div(tx.gasLimit);
+    this.gasPriceMax = new Big(targets[0].expectedRevenue * 1e18).mul(2).div(tx.gasLimit);
     this.tx = tx;
     this.resetGasPrice();
     this.sendIfDeadlineIsApproaching(this.tx);
@@ -159,7 +161,8 @@ export default class TxManager extends CandidatePool implements IEthSubscription
 
     if (end - Date.now() <= DEADLINE_CUSHION) {
       this.sendAtFirstPossibleNonce(tx);
-      winston.info(`⏱ Entering auction with ~${(end - Date.now()) / 1000} seconds remaining`);
+      if (!this.didStartBidding)
+        winston.info(`⏱ Entering auction with ~${(end - Date.now()) / 1000} seconds remaining`);
     }
   }
 
@@ -179,7 +182,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
       this.queue.replace(0, tx, 'clip', this.gasPriceMax);
       return;
     }
-    this.queue.replace(0, tx, 'as_is');
+    this.queue.replace(0, tx, 'as_is', undefined, undefined, 0, false);
   }
 
   /**
