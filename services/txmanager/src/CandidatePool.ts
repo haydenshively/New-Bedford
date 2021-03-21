@@ -18,14 +18,14 @@ export default class CandidatePool {
     if (!this.candidateAddresses.has(candidate.address)) {
       this.candidateAddresses.add(candidate.address);
       this.candidates.push(candidate);
+      // Log
+      winston.info(`🐳 Added ${candidate.address.slice(0, 6)} for revenue of ${candidate.expectedRevenue} Eth`);
     } else {
       const idx = this.candidates.findIndex((c) => c.address === candidate.address);
       this.candidates[idx] = candidate;
     }
     // Sort
     this.sortCandidates();
-    // Log
-    winston.info(`🐳 Added ${candidate.address.slice(0, 6)} for revenue of ${candidate.expectedRevenue} Eth`);
   }
 
   public removeLiquidationCandidate(candidateAddress: string): void {

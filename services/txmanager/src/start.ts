@@ -74,14 +74,14 @@ ipc.config.silent = true;
 ipc.serve('/tmp/newbedford.txmanager', () => {
   ipc.server.on('liquidation-candidate-add', async (message) => {
     const candidate = message as ILiquidationCandidate;
-    if (candidate.expectedRevenue < 0.1) return;
+    if (candidate.expectedRevenue < 0.05) return;
 
     const syncing = await provider.eth.isSyncing();
-    if (typeof syncing === 'boolean' || syncing.CurrentBlock < syncing.HighestBlock - 10) return;
+    if (typeof syncing !== 'boolean' && syncing.CurrentBlock < syncing.HighestBlock - 10) return;
     txmanager.addLiquidationCandidate(candidate);
   });
   ipc.server.on('liquidation-candidate-remove', (message) => {
-    txmanager.removeLiquidationCandidate((message as ILiquidationCandidate).address);
+    txmanager.removeLiquidationCandidate(message);
   });
 });
 ipc.server.start();

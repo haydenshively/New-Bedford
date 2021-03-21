@@ -49,7 +49,7 @@ export class Liquidator extends Contract {
 
     // provide no more than 4400000 gas because we don't want to take up too much
     // of the block (miner's aren't fond of that)
-    return this.txFor(method, Liquidator.gasLimit.mul(Math.min(borrowers.length, 2)));
+    return this.txFor(method, Liquidator.gasLimit.mul('2'));
   }
 
   private liquidateSWithPrice(
@@ -74,7 +74,7 @@ export class Liquidator extends Contract {
 
     // provide no more than 4400000 gas because we don't want to take up too much
     // of the block (miner's aren't fond of that)
-    return this.txFor(method, Liquidator.gasLimit.mul(Math.min(borrowers.length, 2)));
+    return this.txFor(method, Liquidator.gasLimit.mul('2'));
   }
 
   private liquidateS(borrower: string, repayCToken: string, seizeCToken: string, chi = true) {
