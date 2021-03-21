@@ -93,6 +93,7 @@ const cTokens: InstanceMap<CToken> = {
   cUSDC: new CToken('cUSDC'),
   cUSDT: new CToken('cUSDT'),
   cWBTC: new CToken('cWBTC'),
+  cWBTC2: new CToken('cWBTC2'),
   cZRX: new CToken('cZRX'),
 };
 

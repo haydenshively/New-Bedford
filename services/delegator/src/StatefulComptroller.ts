@@ -29,6 +29,7 @@ export default class StatefulComptroller {
     cUSDC: null,
     cUSDT: null,
     cWBTC: null,
+    cWBTC2: null,
     cZRX: null,
   };
 

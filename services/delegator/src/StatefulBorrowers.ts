@@ -26,6 +26,7 @@ export default class StatefulBorrowers {
     cUSDC: new Big('0'),
     cUSDT: new Big('0'),
     cWBTC: new Big('0'),
+    cWBTC2: new Big('0'),
     cZRX: new Big('0'),
   };
 

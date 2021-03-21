@@ -151,6 +151,7 @@ export default class PriceLedger {
           max: USD_VALUE,
         };
       case 'cWBTC':
+      case 'cWBTC2':
         return {
           min: this.prices.BTC?.min.value || null,
           max: this.prices.BTC?.max.value || null,

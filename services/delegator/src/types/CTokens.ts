@@ -11,6 +11,7 @@ export enum CTokens {
   cUSDC = '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
   cUSDT = '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
   cWBTC = '0xC11b1268C1A384e55C48c2391d8d480264A3A7F4',
+  cWBTC2 = '0xccF4429DB6322D5C611ee964527D42E5d685DD6a',
   cZRX = '0xB3319f5D18Bc0D84dD1b4825Dcde5d5f7266d407',
 }
 
@@ -34,6 +35,7 @@ export const cTokenCreationBlocks: { [_ in CTokenSymbol]: number } = {
   cUSDC: 7710760,
   cUSDT: 9879363,
   cWBTC: 8163813,
+  cWBTC2: 12038653,
   cZRX: 7710733,
 };
 
@@ -48,6 +50,7 @@ export const cTokenUnderlyingDecimals: { [_ in CTokenSymbol]: number } = {
   cUSDC: 6,
   cUSDT: 6,
   cWBTC: 8,
+  cWBTC2: 8,
   cZRX: 18,
 };
 
@@ -62,6 +65,7 @@ export const cTokenVersions: { [_ in CTokenSymbol]: CTokenVersion } = {
   cUSDC: CTokenVersion.V1,
   cUSDT: CTokenVersion.V2,
   cWBTC: CTokenVersion.V1,
+  cWBTC2: CTokenVersion.V2,
   cZRX: CTokenVersion.V1,
 };
 
@@ -76,6 +80,7 @@ export const cTokenCoinbaseKeys: { [_ in CTokenSymbol]: CoinbaseKey | null } = {
   cUSDC: null,
   cUSDT: null,
   cWBTC: 'BTC',
+  cWBTC2: 'BTC',
   cZRX: 'ZRX',
 };
 
