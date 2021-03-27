@@ -116,10 +116,21 @@ export default class StatefulPricesOnChain {
 
   private propogateToLedger(key: CoinbaseKey): void {
     const len = this.prices[key].length;
-    this.ledger.cleanHistory(
+    const ledgerIsEmpty = this.ledger.cleanHistory(
       key,
       this.prices[key][len - 1].timestamp, // delete anything older than prices in oldest block
       this.prices[key][0].timestamp, // mask anything older than prices in newest block (don't delete; reorg possible)
     );
+
+    if (ledgerIsEmpty)
+      this.ledger.append(
+        key,
+        {
+          value: this.prices[key][0].value,
+          timestamp: '0',
+        },
+        '',
+        '',
+      );
   }
 }

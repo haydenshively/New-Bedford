@@ -30,6 +30,8 @@ export default class StatefulBorrowers {
     cZRX: new Big('0'),
   };
 
+  private lastScan: number = Date.now();
+
   constructor(provider: Web3, cTokens: { [_ in CTokenSymbol]: CToken }) {
     this.provider = provider;
     this.cTokens = cTokens;
@@ -76,6 +78,7 @@ export default class StatefulBorrowers {
       }
     });
 
+    this.lastScan = Date.now();
     return candidates;
   }
 
@@ -130,7 +133,10 @@ export default class StatefulBorrowers {
         .on('error', console.error);
       subscribeTo
         .LiquidateBorrow(block)
-        .on('data', respondToLiquidate)
+        .on('data', (ev) => {
+          console.log(`Last scan occured ${Date.now() - this.lastScan}ms before liquidation.`);
+          respondToLiquidate(ev);
+        })
         .on('changed', respondToLiquidate)
         .on('error', console.error);
       subscribeTo

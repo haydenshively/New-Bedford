@@ -36,7 +36,7 @@ export default class StatefulBorrower extends Borrower {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
 
-    winston.info(`🟢 *${symbol} Mint* by ${this.address.slice(2, 8)}`);
+    winston.log('debug', `🟢 *${symbol} Mint* by ${this.address.slice(0, 6)}`);
     return this.fetch(symbol, event.blockNumber);
   }
 
@@ -44,7 +44,7 @@ export default class StatefulBorrower extends Borrower {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
 
-    winston.info(`🟢 *${symbol} Redeem* by ${this.address.slice(2, 8)}`);
+    winston.log('debug', `🟢 *${symbol} Redeem* by ${this.address.slice(0, 6)}`);
     return this.fetch(symbol, event.blockNumber);
   }
 
@@ -52,7 +52,7 @@ export default class StatefulBorrower extends Borrower {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
 
-    winston.info(`🔵 *${symbol} Borrow* by ${this.address.slice(2, 8)}`);
+    winston.log('debug', `🔵 *${symbol} Borrow* by ${this.address.slice(0, 6)}`);
     return this.fetch(symbol, event.blockNumber);
   }
 
@@ -60,7 +60,7 @@ export default class StatefulBorrower extends Borrower {
     const symbol = this.getSymbolFor(event.address);
     if (symbol === null) return;
 
-    winston.info(`🔵 *${symbol} Repay* by ${this.address.slice(2, 8)}`);
+    winston.log('debug', `🔵 *${symbol} Repay* by ${this.address.slice(0, 6)}`);
     return this.fetch(symbol, event.blockNumber);
   }
 
@@ -70,13 +70,12 @@ export default class StatefulBorrower extends Borrower {
     if (symbolRepay === null || symbolSeize === null) return;
 
     winston.info(
-      `🟣 ${this.address.slice(
-        2,
-        8,
-      )} had their *${symbolRepay} liquidated* and ${symbolSeize} seized by ${event.returnValues.liquidator.slice(
-        2,
-        8,
-      )}`,
+      `🎣 ${this.address.slice(
+        0,
+        6,
+      )} had their *${symbolRepay} liquidated* and ${symbolSeize} seized by <https://etherscan.io/address/${
+        event.returnValues.liquidator
+      }|${event.returnValues.liquidator.slice(0, 6)}>`,
     );
     return Promise.all([this.fetch(symbolRepay, event.blockNumber), this.fetch(symbolSeize, event.blockNumber)]);
   }

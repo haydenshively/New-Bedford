@@ -96,8 +96,9 @@ export default class PriceLedger {
       }
 
       const timestamp = prices[edges[i]].timestamp;
-      const postableData = this.postableData[key][timestamp];
+      if (timestamp === '0') return; // 0 indicates that the prices are already on-chain
 
+      const postableData = this.postableData[key][timestamp];
       formatted.messages.push(postableData.message);
       formatted.signatures.push(postableData.signature);
       formatted.symbols.push(postableData.key); // should equal local `key`
@@ -200,15 +201,17 @@ export default class PriceLedger {
     return didUpdate;
   }
 
-  private resetPrices(key: CoinbaseKey, maskToTimestamp: string): void {
+  private resetPrices(key: CoinbaseKey, maskToTimestamp: string): boolean {
     this.prices[key] = null;
     this.priceHistories[key].forEach((price) => {
       if (Number(price.timestamp) < Number(maskToTimestamp)) return;
       this.updateMinMax(key, price);
     });
+
+    return this.prices[key] === null;
   }
 
-  public cleanHistory(key: CoinbaseKey, delToTimestamp: string, maskToTimestamp: string): void {
+  public cleanHistory(key: CoinbaseKey, delToTimestamp: string, maskToTimestamp: string): boolean {
     let i: number;
     for (i = 0; i < this.priceHistories[key].length; i += 1) {
       const ts = this.priceHistories[key][i].timestamp;
@@ -218,6 +221,6 @@ export default class PriceLedger {
     }
     this.priceHistories[key].splice(0, i);
 
-    this.resetPrices(key, maskToTimestamp);
+    return this.resetPrices(key, maskToTimestamp);
   }
 }

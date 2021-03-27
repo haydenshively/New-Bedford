@@ -86,7 +86,7 @@ async function start(ipcTxManager: any) {
   await statefulBorrowers.init();
   await statefulComptroller.init();
   await statefulPricesOnChain.init();
-  await statefulPricesCoinbase.init(4000);
+  await statefulPricesCoinbase.init(2000);
 
   winston.log('info', 'Searching for borrowers using the Compound API...');
   const borrowers = await getBorrowers('1');
@@ -98,6 +98,8 @@ async function start(ipcTxManager: any) {
 
   statefulPricesCoinbase.register(() => scan(ipcTxManager));
   provider.eth.subscribe('newBlockHeaders').on('data', (_block) => setTimeout(() => scan(ipcTxManager), 500));
+
+  setInterval(() => ipcTxManager.emit('keepalive', ''), 60 * 5 * 1000);
 }
 
 function stop() {
