@@ -19,7 +19,7 @@ const competitorsFrom = new Set(competitors.from as string[]);
 const competitorsTo = new Set(competitors.to as string[]);
 
 const INITIAL_GAS_PRICE: Big = new Big('100000000000');
-const DEADLINE_CUSHION = 1000;
+const DEADLINE_CUSHION = 5000;
 
 export default class TxManager extends CandidatePool implements IEthSubscriptionConsumer {
   private readonly incognito: IncognitoQueue;
@@ -54,12 +54,16 @@ export default class TxManager extends CandidatePool implements IEthSubscription
     return this.incognito.queue.length !== 0;
   }
 
-  public async init(): Promise<void> {
+  public async init(shouldTransitionIncognito: boolean = false): Promise<void> {
     await this.queue.init();
     await this.queue.rebase();
 
     await this.updateLiquidationWrapper();
     this.incognito.registerTransitionCallback(this.updateLiquidationWrapper.bind(this));
+    if (shouldTransitionIncognito) {
+      const gasPrice = new Big(await this.provider.eth.getGasPrice());
+      this.incognito.beginTransition(gasPrice);
+    }
 
     // TODO: subscribe to liquidation events. If we successfully liquidate somebody,
     // initiate transition on this.incognito
@@ -81,9 +85,17 @@ export default class TxManager extends CandidatePool implements IEthSubscription
   }
 
   private periodic(): void {
-    if (!this.isActive) return; // Break out of periodic loop (no immediate reschedule)
+    if (!this.isActive) {
+      if (this.queue.length > 0) this.queue.dump(0);
+      return; // Break out of periodic loop (no immediate reschedule)
+    }
 
-    let targets = [...this.candidates];
+    // To save gas, include no more than 4 targets in tx calldata
+    const targets = this.candidates.slice(0, 4);
+    // Since `this.isActive === true`, targets.length > 0, and targets[0] will
+    // have highest expected revenue (it's a sorted array). Set that to be primary target
+    let primaryIdx = 0;
+
     if (!this.didStartBidding && this.didSeeCompetitors) {
       const numCandidates = targets.length;
       // We know we don't have the best latency, so if competitors exist we stand down...
@@ -93,19 +105,19 @@ export default class TxManager extends CandidatePool implements IEthSubscription
         winston.info(`⚖️ *Standing down* due to competitors`);
         return;
       }
-      // ...but if alternative targets exist, we may as well try them (but no more than 3)
+      // ...but if alternative targets exist, we can simply set one of them as our primary
+      primaryIdx = 1;
 
       // TODO in this for loop, we could check to make sure that our alternative candidate
       // is liquidatable using the best candidate's prices (or newer prices) since those
       // will probably get posted earlier in the block than our transaction...
       // for (let i = 1; i < numCandidates; i++) {}
-      targets = targets.slice(1, 4);
     }
 
     const tx = liquidators.latest.liquidate(
-      targets[0].pricesToReport.messages,
-      targets[0].pricesToReport.signatures,
-      targets[0].pricesToReport.symbols,
+      targets[primaryIdx].pricesToReport.messages,
+      targets[primaryIdx].pricesToReport.signatures,
+      targets[primaryIdx].pricesToReport.symbols,
       targets.map((target) => target.address),
       targets.map((target) => target.repayCToken),
       targets.map((target) => target.seizeCToken),
@@ -114,7 +126,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
     tx.to = this.liquidatorWrapper!;
 
     // Assume expectedRevenue is just plain ETH (no extra zeros or anything)
-    this.gasPriceMax = new Big(targets[0].expectedRevenue * 1e18).mul(2).div(tx.gasLimit);
+    this.gasPriceMax = new Big(targets[primaryIdx].expectedRevenue * 1e18).mul(2).div(tx.gasLimit);
     this.tx = tx;
     this.resetGasPrice();
     this.sendIfDeadlineIsApproaching(this.tx);
@@ -130,7 +142,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
       if (tx.gas === 21000) return; // Eth transfer
       if (tx.to === null) return; // Contract creation
       if (tx.from === this.queue.wallet.address) return; // Self
-      if (!(competitorsTo.has(tx.to.slice(2)) || competitorsFrom.has(tx.from.slice(2)))) return;
+      if (!(competitorsTo.has(tx.to) || competitorsFrom.has(tx.from))) return;
 
       const gasPrice = new Big(tx.gasPrice);
       if (gasPrice.lt(this.tx!.gasPrice)) return;
@@ -179,7 +191,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
       return;
     }
     if (this.didSeeCompetitors) {
-      this.queue.replace(0, tx, 'clip', this.gasPriceMax);
+      this.queue.replace(0, tx, 'clip', this.gasPriceMax.times('1'));
       return;
     }
     this.queue.replace(0, tx, 'as_is', undefined, undefined, 0, false);

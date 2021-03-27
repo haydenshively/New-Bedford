@@ -55,18 +55,14 @@ const latencyWatch = new LatencyWatcher(latencyInterp);
 ethSub.register(latencyWatch);
 
 // create queue
-const wallet = new Wallet(
-  provider,
-  process.env.ACCOUNT_ADDRESS_CALLER!,
-  process.env.ACCOUNT_SECRET_CALLER!,
-);
+const wallet = new Wallet(provider, process.env.ACCOUNT_ADDRESS_CALLER!, process.env.ACCOUNT_SECRET_CALLER!);
 const queue = new IncognitoQueue(wallet);
 ethSub.register(queue);
 
 // create tx manager
 const txmanager = new TxManager(queue, latencyInterp, (provider as unknown) as Web3);
 ethSub.register(txmanager);
-txmanager.init();
+txmanager.init(process.argv[2] === '-transition-incognito');
 
 ipc.config.appspace = 'newbedford.';
 ipc.config.id = 'txmanager';
@@ -74,14 +70,27 @@ ipc.config.silent = true;
 ipc.serve('/tmp/newbedford.txmanager', () => {
   ipc.server.on('liquidation-candidate-add', async (message) => {
     const candidate = message as ILiquidationCandidate;
-    if (candidate.expectedRevenue < 0.05) return;
+    if (candidate.expectedRevenue < 0.04) {
+      console.log(
+        `Ignoring candidate ${candidate.address.slice(0, 6)} due to low expected revenue (${
+          candidate.expectedRevenue
+        })`,
+      );
+      return;
+    }
 
     const syncing = await provider.eth.isSyncing();
-    if (typeof syncing !== 'boolean' && syncing.CurrentBlock < syncing.HighestBlock - 10) return;
+    if (typeof syncing !== 'boolean' && syncing.CurrentBlock < syncing.HighestBlock - 10) {
+      console.log(`Ignoring candidate ${candidate.address.slice(0, 6)} because Geth is syncing`);
+      return;
+    }
     txmanager.addLiquidationCandidate(candidate);
   });
   ipc.server.on('liquidation-candidate-remove', (message) => {
     txmanager.removeLiquidationCandidate(message);
+  });
+  ipc.server.on('keepalive', (_message) => {
+    console.log('Staying alive oh oh oh 🎶');
   });
 });
 ipc.server.start();
