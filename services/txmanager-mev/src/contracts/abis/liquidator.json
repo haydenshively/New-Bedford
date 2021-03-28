@@ -1,0 +1,331 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address payable",
+        "name": "_treasury",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_comptrollerAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "comptroller",
+    "outputs": [
+      {
+        "internalType": "contract Comptroller",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [],
+    "name": "priceOracle",
+    "outputs": [
+      {
+        "internalType": "contract PriceOracle",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [],
+    "name": "kill",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_comptrollerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setComptroller",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_gasThreshold",
+        "type": "uint256"
+      }
+    ],
+    "name": "setGasThreshold",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "_messages",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "_signatures",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_symbols",
+        "type": "string[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_borrowers",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_cTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "liquidateSNWithPrice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "_borrowers",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_cTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "liquidateSN",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "_messages",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "_signatures",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_symbols",
+        "type": "string[]"
+      },
+      {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      }
+    ],
+    "name": "liquidateSWithPrice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      }
+    ],
+    "name": "liquidateS",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "liquidate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      }
+    ],
+    "name": "liquidateSChi",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "_borrowers",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_cTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "liquidateSNChi",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "_messages",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "_signatures",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_symbols",
+        "type": "string[]"
+      },
+      {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      }
+    ],
+    "name": "liquidateSWithPriceChi",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "_messages",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "_signatures",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_symbols",
+        "type": "string[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_borrowers",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_cTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "liquidateSNWithPriceChi",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
