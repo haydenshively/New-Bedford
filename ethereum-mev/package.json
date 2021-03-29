@@ -1,0 +1,51 @@
+{
+  "name": "new-bedford-contracts-mev",
+  "version": "1.0.0",
+  "description": "Compound Liquidation Bot - Contracts MEV",
+  "main": "src/start.js",
+  "directories": {
+    "test": "test"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^1.2.0",
+    "@uniswap/lib": "^1.1.2",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "big.js": "^5.2.2",
+    "dotenv-safe": "^8.2.0",
+    "ethereumjs-tx": "^2.1.2",
+    "openzeppelin-solidity": "https://github.com/OpenZeppelin/openzeppelin-contracts#974c534210ab3347bdaa45f0f07cfe298a8a6866",
+    "truffle": "^5.1.65",
+    "web3": "^1.3.4",
+    "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "chai": "^4.3.0",
+    "ganache-cli": "^6.12.2",
+    "mocha": "^8.2.1"
+  },
+  "scripts": {
+    "compile": "npx truffle compile",
+    "test-latest-block": "npx truffle test --network ganache",
+    "test-latest-block-verbose": "npx truffle test --network ganache --show-events",
+    "test-latest-block-verbose-trace": "npx truffle test --network ganache --show-events --stacktrace",
+    "test-known-block": "KNOWN_BLOCK=true npx truffle test --network ganache",
+    "test-known-block-verbose": "KNOWN_BLOCK=true npx truffle test --network ganache --show-events",
+    "test-known-block-verbose-trace": "KNOWN_BLOCK=true npx truffle test --network ganache --show-events --stacktrace",
+    "deploy-production": "npx truffle migrate --network production",
+    "console-production": "npx truffle console --network production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/haydenshively/New-Bedford.git"
+  },
+  "author": "Hayden Shively",
+  "license": "UNLICENSED",
+  "private": true,
+  "bugs": {
+    "url": "https://github.com/haydenshively/New-Bedford/issues"
+  },
+  "homepage": "https://github.com/haydenshively/New-Bedford#readme"
+}
