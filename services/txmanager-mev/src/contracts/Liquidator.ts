@@ -15,41 +15,17 @@ export class Liquidator extends Contract {
     messages: string[],
     signatures: string[],
     symbols: string[],
-    borrowers: string[],
-    repayCTokens: string[],
-    seizeCTokens: string[],
+    borrower: string,
+    repayCToken: string,
+    seizeCToken: string,
+    toMiner: number,
     chi = true,
   ): ITx {
     if (messages.length !== signatures.length || signatures.length !== symbols.length)
       throw new Error('When liquidating, messages, signatures, and symbols should have the same length');
-    if (borrowers.length !== repayCTokens.length || repayCTokens.length !== seizeCTokens.length)
-      throw new Error('When liquidating, borrowers, repayCTokens, and seizeCTokens should have the same length');
 
-    if (messages.length === 0) {
-      if (borrowers.length > 1) return this.liquidateSN(borrowers, repayCTokens, seizeCTokens, chi);
-      return this.liquidateS(borrowers[0], repayCTokens[0], seizeCTokens[0], chi);
-    }
-    if (borrowers.length > 1)
-      return this.liquidateSNWithPrice(messages, signatures, symbols, borrowers, repayCTokens, seizeCTokens, chi);
-    return this.liquidateSWithPrice(messages, signatures, symbols, borrowers[0], repayCTokens[0], seizeCTokens[0], chi);
-  }
-
-  private liquidateSNWithPrice(
-    messages: string[],
-    signatures: string[],
-    symbols: string[],
-    borrowers: string[],
-    repayCTokens: string[],
-    seizeCTokens: string[],
-    chi = true,
-  ) {
-    const cTokens = Liquidator.combineCTokens(repayCTokens, seizeCTokens);
-    const handle = chi ? this.inner.methods.liquidateSNWithPriceChi : this.inner.methods.liquidateSNWithPrice;
-    const method = handle(messages, signatures, symbols, borrowers, cTokens);
-
-    // provide no more than 4400000 gas because we don't want to take up too much
-    // of the block (miner's aren't fond of that)
-    return this.txFor(method, Liquidator.gasLimit.mul('2'));
+    if (messages.length === 0) return this.liquidateS(borrower, repayCToken, seizeCToken, toMiner, chi);
+    return this.liquidateSWithPrice(messages, signatures, symbols, borrower, repayCToken, seizeCToken, toMiner, chi);
   }
 
   private liquidateSWithPrice(
@@ -59,35 +35,20 @@ export class Liquidator extends Contract {
     borrower: string,
     repayCToken: string,
     seizeCToken: string,
+    toMiner: number,
     chi = true,
   ) {
     const handle = chi ? this.inner.methods.liquidateSWithPriceChi : this.inner.methods.liquidateSWithPrice;
-    const method = handle(messages, signatures, symbols, borrower, repayCToken, seizeCToken);
+    const method = handle(messages, signatures, symbols, borrower, repayCToken, seizeCToken, toMiner);
 
     return this.txFor(method, Liquidator.gasLimit);
   }
 
-  private liquidateSN(borrowers: string[], repayCTokens: string[], seizeCTokens: string[], chi = true) {
-    const cTokens = Liquidator.combineCTokens(repayCTokens, seizeCTokens);
-    const handle = chi ? this.inner.methods.liquidateSNChi : this.inner.methods.liquidateSN;
-    const method = handle(borrowers, cTokens);
-
-    // provide no more than 4400000 gas because we don't want to take up too much
-    // of the block (miner's aren't fond of that)
-    return this.txFor(method, Liquidator.gasLimit.mul('2'));
-  }
-
-  private liquidateS(borrower: string, repayCToken: string, seizeCToken: string, chi = true) {
+  private liquidateS(borrower: string, repayCToken: string, seizeCToken: string, toMiner: number, chi = true) {
     const handle = chi ? this.inner.methods.liquidateSChi : this.inner.methods.liquidateS;
-    const method = handle(borrower, repayCToken, seizeCToken);
+    const method = handle(borrower, repayCToken, seizeCToken, toMiner);
 
     return this.txFor(method, Liquidator.gasLimit);
-  }
-
-  private static combineCTokens(repay: string[], seize: string[]) {
-    const cTokens = [];
-    for (let i = 0; i < repay.length; i += 1) cTokens.push(repay[i], seize[i]);
-    return cTokens;
   }
 }
 
@@ -95,15 +56,13 @@ export enum Instances {
   // v1,
   // v2,
   // ...
-  adam,
   latest,
 }
 
 type InstanceMap<T> = { [d in keyof typeof Instances]: T };
 
 const liquidators: InstanceMap<Liquidator> = {
-  adam: new Liquidator('0x29FAe933BE0186605f0Aca29A2387AcDB9B5EECC'),
-  latest: new Liquidator('0x0A4132Af8e92cBB4ffC218627a889c088926FF49'),
+  latest: new Liquidator('0x0000000073aB64137E95dea458bAc6d7AA503636'),
 };
 
 export default liquidators;

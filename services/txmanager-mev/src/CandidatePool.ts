@@ -19,7 +19,7 @@ export default class CandidatePool {
       this.candidateAddresses.add(candidate.address);
       this.candidates.push(candidate);
       // Log
-      winston.info(`🐳 Added ${candidate.address.slice(0, 6)} for revenue of ${candidate.expectedRevenue} Eth`);
+      winston.info(`🐳 MEV Added ${candidate.address.slice(0, 6)} for revenue of ${candidate.expectedRevenue} Eth`);
     } else {
       const idx = this.candidates.findIndex((c) => c.address === candidate.address);
       this.candidates[idx] = candidate;
@@ -38,7 +38,7 @@ export default class CandidatePool {
     // Sort
     this.sortCandidates();
     // Log
-    winston.info(`🧮 Removed ${candidateAddress.slice(0, 6)}`);
+    winston.info(`🧮 MEV Removed ${candidateAddress.slice(0, 6)}`);
   }
 
   // Descending insertion sort (candidates should never have more than ~10 elements)
