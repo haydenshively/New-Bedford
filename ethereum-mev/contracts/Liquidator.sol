@@ -157,7 +157,7 @@ contract Liquidator is PairSelector, LiquidationCallee {
         address _seizeCToken,
         uint _repay,
         uint _seize
-    ) public returns (uint) {
+    ) private returns (uint) {
         // Branchless computation of mode
         uint mode;
         assembly {
