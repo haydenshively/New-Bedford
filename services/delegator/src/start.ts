@@ -64,25 +64,25 @@ let candidatesObj = {
   previous: <string[]>[],
 };
 
-async function scan(ipcTxManager: any) {
+async function scan(ipcTxManagers: any[]) {
   const candidates = await statefulBorrowers.scan(statefulComptroller, priceLedger);
   const candidatesSet = new Set<string>();
 
   candidates.forEach((candidate) => {
     candidatesSet.add(candidate.address);
-    ipcTxManager.emit('liquidation-candidate-add', candidate);
+    ipcTxManagers.forEach((i) => i.emit('liquidation-candidate-add', candidate));
     // winston.log('info', `🐳 Found ${candidate.address.slice(0, 6)} for revenue of ${candidate.expectedRevenue} Eth`);
   });
 
   candidatesObj.previous.forEach((address) => {
     if (candidatesSet.has(address)) return;
-    ipcTxManager.emit('liquidation-candidate-remove', address);
+    ipcTxManagers.forEach((i) => i.emit('liquidation-candidate-remove', address));
   });
 
   candidatesObj.previous = Array.from(candidatesSet);
 }
 
-async function start(ipcTxManager: any) {
+async function start(ipcTxManagers: any[]) {
   await statefulBorrowers.init();
   await statefulComptroller.init();
   await statefulPricesOnChain.init();
@@ -96,10 +96,10 @@ async function start(ipcTxManager: any) {
   await statefulBorrowers.push(borrowers.map((x) => Web3Utils.toChecksumAddress(x)));
   winston.log('info', `Fetched all borrower data in ${Date.now() - borrowersPushStart} ms`);
 
-  statefulPricesCoinbase.register(() => scan(ipcTxManager));
-  provider.eth.subscribe('newBlockHeaders').on('data', (_block) => setTimeout(() => scan(ipcTxManager), 500));
+  statefulPricesCoinbase.register(() => scan(ipcTxManagers));
+  provider.eth.subscribe('newBlockHeaders').on('data', (_block) => setTimeout(() => scan(ipcTxManagers), 500));
 
-  setInterval(() => ipcTxManager.emit('keepalive', ''), 60 * 5 * 1000);
+  setInterval(() => ipcTxManagers.forEach((i) => i.emit('keepalive', '')), 60 * 5 * 1000);
 }
 
 function stop() {
@@ -116,7 +116,14 @@ ipc.config.silent = true;
 ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
   ipc.of['txmanager'].on('connect', () => {
     console.log("Connected to TxManager's IPC");
-    start(ipc.of['txmanager']);
+
+    ipc.connectTo('txmanager-mev', '/tmp/newbedford.txmanager-mev', () => {
+      ipc.of['txmanager-mev'].on('connect', () => {
+        console.log("Connected to TxManagerMEV's IPC");
+
+        start([ipc.of['txmanager'], ipc.of['txmanager-mev']]);
+      });
+    });
   });
 
   ipc.of['txmanager'].on('disconnect', () => {
