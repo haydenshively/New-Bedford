@@ -16,15 +16,11 @@ import "./external/uniswap/IUniswapV2Pair.sol";
 
 import "./external/ICHI.sol";
 
+import "./LiquidationCallee.sol";
 import "./PairSelector.sol";
 
 
-interface ITreasury {
-    function payoutMax(address _asset) external;
-}
-
-
-contract Liquidator is PairSelector {
+contract Liquidator is PairSelector, LiquidationCallee {
     using SafeERC20 for IERC20;
 
     address private constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
@@ -37,7 +33,7 @@ contract Liquidator is PairSelector {
 
     uint private constant FUZZY_DEN = 1000;
 
-    address payable private immutable treasury;
+    address payable private owner;
 
     Comptroller public comptroller;
 
@@ -47,27 +43,35 @@ contract Liquidator is PairSelector {
 
     uint private liqIncent;
 
-    modifier onlyTreasury() {
-        require(msg.sender == treasury, "New Bedford: Unauthorized");
-        _;
-    }
+    event Revenue(address asset, uint amount);
 
     modifier discountCHI {
         uint gasStart = gasleft();
         _;
         uint gasSpent = 21000 + gasStart - gasleft() + 16 * msg.data.length;
-        ICHI(CHI).freeFromUpTo(treasury, (gasSpent + 14154) / 41947);
+        ICHI(CHI).freeUpTo((gasSpent + 14154) / 41947);
     }
 
-
-    constructor(address payable _treasury, address _comptrollerAddress) PairSelector() {
-        treasury = _treasury;
+    constructor(address _comptrollerAddress) {
+        owner = payable(msg.sender);
         _setComptroller(_comptrollerAddress);
     }
 
-    /// @dev Delete the contract and send any available ETH to treasury
-    function kill() external onlyTreasury {
-        selfdestruct(treasury);
+    /// @dev Allows owner to change their address
+    function changeOwner(address payable _owner) external {
+        require(msg.sender == owner, "Not owner");
+        owner = _owner;
+    }
+
+    /// @dev Delete the contract and send any available ETH to owner
+    function kill() external {
+        require(msg.sender == owner, "Not owner");
+        selfdestruct(owner);
+    }
+
+    function setComptroller(address _comptrollerAddress) external {
+        require(msg.sender == owner, "Not owner");
+        _setComptroller(_comptrollerAddress);
     }
 
     function _setComptroller(address _comptrollerAddress) private {
@@ -77,29 +81,18 @@ contract Liquidator is PairSelector {
         liqIncent = comptroller.liquidationIncentiveMantissa();
     }
 
-    function setComptroller(address _comptrollerAddress) external onlyTreasury {
-        _setComptroller(_comptrollerAddress);
+    function mintCHI(uint _amount) external {
+        ICHI(CHI).mint(_amount);
     }
 
-    function liquidateSNWithPrice(
-        bytes[] calldata _messages,
-        bytes[] calldata _signatures,
-        string[] calldata _symbols,
-        address[] calldata _borrowers,
-        address[] calldata _cTokens
-    ) external {
-        oracle.postPrices(_messages, _signatures, _symbols);
-        liquidateSN(_borrowers, _cTokens);
+    function payout(address _asset, uint _amount) public {
+        if (_asset == address(0)) owner.transfer(_amount);
+        else IERC20(_asset).transfer(owner, _amount);
     }
 
-    function liquidateSN(address[] calldata _borrowers, address[] calldata _cTokens) public {
-        uint i;
-
-        while (true) {
-            liquidateS(_borrowers[i], _cTokens[i * 2], _cTokens[i * 2 + 1]);
-            if (gasleft() < GAS_THRESHOLD || i + 1 == _borrowers.length) break;
-            i++;
-        }
+    function payoutMax(address _asset) public {
+        if (_asset == address(0)) payout(_asset, address(this).balance);
+        else payout(_asset, IERC20(_asset).balanceOf(address(this)));
     }
 
     function liquidateSWithPrice(
@@ -108,10 +101,11 @@ contract Liquidator is PairSelector {
         string[] calldata _symbols,
         address _borrower,
         address _repayCToken,
-        address _seizeCToken
+        address _seizeCToken,
+        uint _toMiner
     ) external {
         oracle.postPrices(_messages, _signatures, _symbols);
-        liquidateS(_borrower, _repayCToken, _seizeCToken);
+        liquidateS(_borrower, _repayCToken, _seizeCToken, _toMiner);
     }
 
     /**
@@ -120,8 +114,9 @@ contract Liquidator is PairSelector {
      * @param _borrower (address): the Compound user to liquidate
      * @param _repayCToken (address): a CToken for which the user is in debt
      * @param _seizeCToken (address): a CToken for which the user has a supply balance
+     * @param _toMiner (uint): the portion of revenue to send to block.coinbase
      */
-    function liquidateS(address _borrower, address _repayCToken, address _seizeCToken) public {
+    function liquidateS(address _borrower, address _repayCToken, address _seizeCToken, uint _toMiner) public {
         uint seizeTokensPerRepayToken = oracle.getUnderlyingPrice(_repayCToken) * liqIncent / oracle.getUnderlyingPrice(_seizeCToken); // 18 extra decimals
 
         uint repay_BorrowConstrained = CERC20(_repayCToken).borrowBalanceStored(_borrower) * closeFact / 1e18; // 0 extra decimals
@@ -131,8 +126,19 @@ contract Liquidator is PairSelector {
         uint seize = repay * seizeTokensPerRepayToken / 1e18;
 
         uint mode = liquidate(_borrower, _repayCToken, _seizeCToken, repay, seize);
-        if (mode == 0 || mode == 1) ITreasury(treasury).payoutMax(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-        else ITreasury(treasury).payoutMax(address(0));
+
+        if (_toMiner != 0) {
+            if (mode == 0 || mode == 1) {
+                IWETH(WETH).withdraw(IERC20(WETH).balanceOf(address(this)));
+                uint balance = address(this).balance;
+                block.coinbase.transfer(balance * _toMiner / 10_000);
+                emit Revenue(WETH, balance);
+            } else {
+                uint balance = address(this).balance;
+                block.coinbase.transfer(balance * _toMiner / 10_000);
+                emit Revenue(address(0), balance);
+            }
+        }
     }
 
     /**
@@ -143,6 +149,7 @@ contract Liquidator is PairSelector {
      * @param _seizeCToken (address): a CToken for which the user has a supply balance
      * @param _repay (uint): the amount (specified in units of _repayCToken.underlying) that can be repaid
      * @param _seize (uint): the amount (specified in units of _seizeCToken.underlying) that can be seized
+     * @return the mode
      */
     function liquidate(
         address _borrower,
@@ -173,8 +180,8 @@ contract Liquidator is PairSelector {
 
         // Calculate some more params (depending on mode) and execute swap
         if (mode % 2 == 0) {
-            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(_repay, 0, treasury, data);
-            else IUniswapV2Pair(pair).swap(0, _repay, treasury, data);
+            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(_repay, 0, address(this), data);
+            else IUniswapV2Pair(pair).swap(0, _repay, address(this), data);
         }
         else if (mode == 1) {
             unchecked {
@@ -184,26 +191,22 @@ contract Liquidator is PairSelector {
             }
 
             // Both amount0 and amount1 are non-zero since we want to end up with ETH
-            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(_repay, maxSwap, treasury, data);
-            else IUniswapV2Pair(pair).swap(maxSwap, _repay, treasury, data);
+            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(_repay, maxSwap, address(this), data);
+            else IUniswapV2Pair(pair).swap(maxSwap, _repay, address(this), data);
         }
         else /* if (mode == 3) */ {
             // Just reusing maxSwap variable to save gas; name means nothing here
             maxSwap = UniswapV2Library.getAmountOut(_seize, reserveIn, reserveOut) * FUZZY_NUM / FUZZY_DEN;
 
-            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(maxSwap, 0, treasury, data);
-            else IUniswapV2Pair(pair).swap(0, maxSwap, treasury, data);
+            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(maxSwap, 0, address(this), data);
+            else IUniswapV2Pair(pair).swap(0, maxSwap, address(this), data);
         }
 
         return mode;
     }
 
-    function liquidateSChi(address _borrower, address _repayCToken, address _seizeCToken) external discountCHI {
-        liquidateS(_borrower, _repayCToken, _seizeCToken);
-    }
-
-    function liquidateSNChi(address[] calldata _borrowers, address[] calldata _cTokens) external discountCHI {
-        liquidateSN(_borrowers, _cTokens);
+    function liquidateSChi(address _borrower, address _repayCToken, address _seizeCToken, uint _toMiner) external discountCHI {
+        liquidateS(_borrower, _repayCToken, _seizeCToken, _toMiner);
     }
 
     function liquidateSWithPriceChi(
@@ -212,20 +215,10 @@ contract Liquidator is PairSelector {
         string[] calldata _symbols,
         address _borrower,
         address _repayCToken,
-        address _seizeCToken
+        address _seizeCToken,
+        uint _toMiner
     ) external discountCHI {
         oracle.postPrices(_messages, _signatures, _symbols);
-        liquidateS(_borrower, _repayCToken, _seizeCToken);
-    }
-
-    function liquidateSNWithPriceChi(
-        bytes[] calldata _messages,
-        bytes[] calldata _signatures,
-        string[] calldata _symbols,
-        address[] calldata _borrowers,
-        address[] calldata _cTokens
-    ) external discountCHI {
-        oracle.postPrices(_messages, _signatures, _symbols);
-        liquidateSN(_borrowers, _cTokens);
+        liquidateS(_borrower, _repayCToken, _seizeCToken, _toMiner);
     }
 }
