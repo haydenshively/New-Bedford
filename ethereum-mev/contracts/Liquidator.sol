@@ -27,7 +27,11 @@ interface ITreasury {
 contract Liquidator is PairSelector {
     using SafeERC20 for IERC20;
 
+    address private constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
+
     address private constant CHI = 0x0000000000004946c0e9F43F4Dee607b0eF1fA1c;
+
+    uint private constant GAS_THRESHOLD = 2000000;
 
     uint private constant FUZZY_NUM = 999;
 
@@ -42,8 +46,6 @@ contract Liquidator is PairSelector {
     uint private closeFact;
 
     uint private liqIncent;
-
-    uint private gasThreshold = 2000000;
 
     modifier onlyTreasury() {
         require(msg.sender == treasury, "New Bedford: Unauthorized");
@@ -79,10 +81,6 @@ contract Liquidator is PairSelector {
         _setComptroller(_comptrollerAddress);
     }
 
-    function setGasThreshold(uint _gasThreshold) external onlyTreasury {
-        gasThreshold = _gasThreshold;
-    }
-
     function liquidateSNWithPrice(
         bytes[] calldata _messages,
         bytes[] calldata _signatures,
@@ -99,7 +97,7 @@ contract Liquidator is PairSelector {
 
         while (true) {
             liquidateS(_borrowers[i], _cTokens[i * 2], _cTokens[i * 2 + 1]);
-            if (gasleft() < gasThreshold || i + 1 == _borrowers.length) break;
+            if (gasleft() < GAS_THRESHOLD || i + 1 == _borrowers.length) break;
             i++;
         }
     }
@@ -124,9 +122,6 @@ contract Liquidator is PairSelector {
      * @param _seizeCToken (address): a CToken for which the user has a supply balance
      */
     function liquidateS(address _borrower, address _repayCToken, address _seizeCToken) public {
-        ( , , uint shortfall) = comptroller.getAccountLiquidity(_borrower);
-        if (shortfall == 0) return;
-
         uint seizeTokensPerRepayToken = oracle.getUnderlyingPrice(_repayCToken) * liqIncent / oracle.getUnderlyingPrice(_seizeCToken); // 18 extra decimals
 
         uint repay_BorrowConstrained = CERC20(_repayCToken).borrowBalanceStored(_borrower) * closeFact / 1e18; // 0 extra decimals
@@ -135,7 +130,9 @@ contract Liquidator is PairSelector {
         uint repay = repay_BorrowConstrained < repay_SupplyConstrained ? repay_BorrowConstrained : repay_SupplyConstrained;
         uint seize = repay * seizeTokensPerRepayToken / 1e18;
 
-        liquidate(_borrower, _repayCToken, _seizeCToken, repay, seize);
+        uint mode = liquidate(_borrower, _repayCToken, _seizeCToken, repay, seize);
+        if (mode == 0 || mode == 1) ITreasury(treasury).payoutMax(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        else ITreasury(treasury).payoutMax(address(0));
     }
 
     /**
@@ -153,71 +150,52 @@ contract Liquidator is PairSelector {
         address _seizeCToken,
         uint _repay,
         uint _seize
-    ) public {
+    ) public returns (uint) {
+        // Branchless computation of mode
+        uint mode;
+        assembly {
+            // 3 * uint(_repayCToken == CETH) + 2 * uint(_seizeCToken == CETH) + uint(_repayCToken == _seizeCToken)
+            mode := add(mul(3, eq(_repayCToken, CETH)), add(mul(2, eq(_seizeCToken, CETH)), eq(_repayCToken, _seizeCToken)))
+        }
+
+        // Figure out best pair for swap (and other stats)
         (
             address pair,
             address flashToken,
             uint maxSwap,
             uint reserveIn,
             uint reserveOut
-        ) = selectPairSlippageAware(_repayCToken, _seizeCToken);
+        ) = selectPairSlippageAware(mode, _repayCToken, _seizeCToken);
 
-        uint temp;
-        /**
-         * If we would have to pay more than a 5% premium to swap _seize,
-         * then lower _seize such that it sits right at the 5% premium.
-         * (_seize is lowered naturally by lowering _repay)
-         *
-         * NOTE: Even if the liquidation incentive is > 5%, there is no
-         *      guarantee that the trade will go through. This is because
-         *      Compound may price assets differently than Uniswap.
-         *
-         *      In general that would occur when the seized asset is dropping
-         *      in value on Coinbase faster than it is dropping on Uniswap.
-         *
-         *      To cover that case, we would need to set the liquidation
-         *      incentive as high as the Open Price Feed's anchor bounds.
-         *      20% is much too high, so we leave this problem for V2.
-         */
-        if (_seize > maxSwap) {
-            temp = _repay;
-            _repay *= maxSwap / _seize;
-            _seize *= maxSwap / temp;
+        // Update repay & seize numbers, then bundle data for flash swap
+        if (_seize > maxSwap) (_repay, _seize) = (_repay * maxSwap / _seize, _seize * maxSwap / _repay);
+        bytes memory data = abi.encode(mode, _borrower, _repayCToken, _seizeCToken, _repay);
+
+        // Calculate some more params (depending on mode) and execute swap
+        if (mode % 2 == 0) {
+            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(_repay, 0, treasury, data);
+            else IUniswapV2Pair(pair).swap(0, _repay, treasury, data);
         }
-
-        // Initiate flash swap
-        bytes memory data = abi.encode(_borrower, _repayCToken, _seizeCToken, _repay);
-        uint amount0;
-        uint amount1;
-
-        if (_repayCToken == _seizeCToken) {
-            unchecked { temp = 997 * _seize; }
-
-            // Both amount0 and amount1 will be non-zero since we want to end up with ETH
-            if (IUniswapV2Pair(pair).token0() == flashToken) {
-                amount0 = _repay;
-                amount1 = reserveIn * (temp - 1000 * _repay) / (1000 * (reserveOut - _repay) + temp) * FUZZY_NUM / FUZZY_DEN;
-            } else {
-                amount0 = reserveIn * (temp - 1000 * _repay) / (1000 * (reserveOut - _repay) + temp) * FUZZY_NUM / FUZZY_DEN;
-                amount1 = _repay;
+        else if (mode == 1) {
+            unchecked {
+                // Just reusing maxSwap variable to save gas; name means nothing here
+                maxSwap = 997 * _seize;
+                maxSwap = reserveIn * (maxSwap - 1000 * _repay) / (1000 * (reserveOut - _repay) + maxSwap) * FUZZY_NUM / FUZZY_DEN;
             }
 
-        } else if (_repayCToken == CETH) {
-            if (IUniswapV2Pair(pair).token0() == flashToken) {
-                amount0 = UniswapV2Library.getAmountOut(_seize, reserveIn, reserveOut) * FUZZY_NUM / FUZZY_DEN;
-                amount1 = 0;
-            } else {
-                amount0 = 0;
-                amount1 = UniswapV2Library.getAmountOut(_seize, reserveIn, reserveOut) * FUZZY_NUM / FUZZY_DEN;
-            }
+            // Both amount0 and amount1 are non-zero since we want to end up with ETH
+            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(_repay, maxSwap, treasury, data);
+            else IUniswapV2Pair(pair).swap(maxSwap, _repay, treasury, data);
+        }
+        else /* if (mode == 3) */ {
+            // Just reusing maxSwap variable to save gas; name means nothing here
+            maxSwap = UniswapV2Library.getAmountOut(_seize, reserveIn, reserveOut) * FUZZY_NUM / FUZZY_DEN;
 
-        } else {
-            if (IUniswapV2Pair(pair).token0() == flashToken) amount0 = _repay;
-            else amount1 = _repay;
+            if (IUniswapV2Pair(pair).token0() == flashToken) IUniswapV2Pair(pair).swap(maxSwap, 0, treasury, data);
+            else IUniswapV2Pair(pair).swap(0, maxSwap, treasury, data);
         }
 
-        IUniswapV2Pair(pair).swap(amount0, amount1, treasury, data);
-        ITreasury(treasury).payoutMax(address(0));
+        return mode;
     }
 
     function liquidateSChi(address _borrower, address _repayCToken, address _seizeCToken) external discountCHI {

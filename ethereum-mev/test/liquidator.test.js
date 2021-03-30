@@ -47,6 +47,8 @@ contract("Liquidator Test", (accounts) => {
     const events = tx.receipt.rawLogs;
     assert.equal(events.length, 18);
 
+    console.log(tx.receipt.gasUsed);
+
     checkRevenueDistributed(
       treasury,
       events[events.length - 1],
@@ -67,6 +69,8 @@ contract("Liquidator Test", (accounts) => {
 
     const events = tx.receipt.rawLogs;
     assert.equal(events.length, 20);
+
+    console.log(tx.receipt.gasUsed);
 
     checkRevenueDistributed(
       treasury,
@@ -89,6 +93,8 @@ contract("Liquidator Test", (accounts) => {
     const events = tx.receipt.rawLogs;
     assert.equal(events.length, 21);
 
+    console.log(tx.receipt.gasUsed);
+
     checkRevenueDistributed(
       treasury,
       events[events.length - 1],
@@ -110,6 +116,8 @@ contract("Liquidator Test", (accounts) => {
     const events = tx.receipt.rawLogs;
     assert.equal(events.length, 27);
 
+    console.log(tx.receipt.gasUsed);
+
     checkRevenueDistributed(
       treasury,
       events[events.length - 1],
@@ -117,7 +125,7 @@ contract("Liquidator Test", (accounts) => {
     );
   });
 
-  xit("should liquidate one from list with CHI @known-block", async () => {
+  it("should liquidate one from list with CHI @known-block", async () => {
     const liquidator = await Liquidator.deployed();
     const treasury = await Treasury.deployed();
 
@@ -150,7 +158,9 @@ contract("Liquidator Test", (accounts) => {
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 33);
+    assert.equal(events.length, 49);
+
+    console.log(tx.receipt.gasUsed);
 
     const transferCHI = events[events.length - 2];
     assert.equal(
@@ -162,7 +172,7 @@ contract("Liquidator Test", (accounts) => {
       transferCHI,
       treasury.address,
       "0x0000000000000000000000000000000000000000",
-      "34"
+      "43"
     );
   });
 

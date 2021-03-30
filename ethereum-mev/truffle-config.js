@@ -43,7 +43,7 @@ const ganacheServerConfig = {
 const mochaConfig = { grep: "@latest-block" };
 if (process.env.KNOWN_BLOCK === "true") {
   ganacheServerConfig.fork = mainnet_ipc;
-  // ganacheServerConfig.fork_block_number = "12132635";
+  ganacheServerConfig.fork_block_number = "12138570";
   mochaConfig.grep = "@known-block";
 }
 

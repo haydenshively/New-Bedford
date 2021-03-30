@@ -12,7 +12,6 @@ import "./external/uniswap/IUniswapV2Pair.sol";
 
 contract PairSelector {
 
-    address internal constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
     address internal constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private constant FACTORY = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
 
@@ -43,27 +42,23 @@ contract PairSelector {
      *  )
      */
     function selectPairSlippageAware(
+        uint _mode,
         address _repayCToken,
         address _seizeCToken
-    ) internal view returns (address pair, address outToken, uint maxSwap, uint inTokenReserves, uint outTokenReserves) {
+    ) internal view returns (
+        address pair,
+        address outToken,
+        uint maxSwap,
+        uint inTokenReserves,
+        uint outTokenReserves
+    ) {
         address inToken;
 
-        if (_repayCToken == _seizeCToken || _seizeCToken == CETH) {
-            outToken = CERC20Storage(_repayCToken).underlying();
-            inToken = WETH;
-            // ...logic continues after the conditionals
-        }
-        else if (_repayCToken == CETH) {
-            outToken = WETH;
-            inToken = CERC20Storage(_seizeCToken).underlying();
-            // ...logic continues after the conditionals
-        }
-        else {
+        if (_mode == 0) {
             outToken = CERC20Storage(_repayCToken).underlying();
             inToken = CERC20Storage(_seizeCToken).underlying();
-            // ...logic is self-contained to this case
 
-            // If it doesn't, see if REPAY->ETH + SEIZE->ETH would be better
+            // REPAY->ETH + SEIZE->ETH
             uint wETHReserves2;
             ( , wETHReserves2, pair) = UniswapV2Library.getReservesWithPair(
                 FACTORY,
@@ -84,6 +79,14 @@ contract PairSelector {
 
             return (pair, outToken, maxSwap, 0, 0);
         }
+        else if (_mode == 3) {
+            outToken = WETH;
+            inToken = CERC20Storage(_seizeCToken).underlying();
+        }
+        else /* if (_mode == 1 || _mode == 2) */ {
+            outToken = CERC20Storage(_repayCToken).underlying();
+            inToken = WETH;
+        }
 
         // Computes pair without external call, then fetches reserve size
         (outTokenReserves, inTokenReserves, pair) = UniswapV2Library.getReservesWithPair(
@@ -102,10 +105,9 @@ contract PairSelector {
      * @param _reservesX (uint): The pair reserves corresponding to the token that will be sent *to* the pair
      * @return deltaX The maximum trade size (denominated in X)
      */
-    function computeMaxInputGivenSlippage(uint _slippage, uint _reservesX) private pure returns (uint deltaX) {
-        uint slippageTerm = (100000000 / _slippage) - 100301; // 100301 ~= 100000 * 1000/997
-        deltaX = _reservesX * slippageTerm / 100000;
-    }
+    function computeMaxInputGivenSlippage(uint _slippage, uint _reservesX) private pure returns (uint) { unchecked {
+        return _reservesX * ((100000000 / _slippage) - 100301) / 100000;
+    }}
 
     /**
      * Uses a maximum allowed slippage (or "price impact") to constrain trade size across two pairs.
@@ -122,9 +124,8 @@ contract PairSelector {
         uint _reservesX,
         uint _reservesY1,
         uint _reservesY2
-    ) private pure returns (uint deltaX) {
+    ) private pure returns (uint) { unchecked {
         uint reservesTerm = 997 * _reservesX * _reservesY2 / (997 * _reservesY1 + 1000 * _reservesY2);
-        uint slippageTerm = (100000000 / _slippage) - 100603; // 100603 ~= 100000 * (1000/997)**2
-        deltaX = reservesTerm * slippageTerm / 100000;
-    }
+        return reservesTerm * ((100000000 / _slippage) - 100603) / 100000;
+    }}
 }

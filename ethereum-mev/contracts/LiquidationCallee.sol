@@ -42,122 +42,101 @@ contract LiquidationCallee is IUniswapV2Callee {
     function uniswapV2Call(address /*sender*/, uint amount0, uint amount1, bytes calldata data) override external {
         // Unpack parameters sent from the `liquidate` function
         // NOTE: these are being passed in from some other contract, and cannot necessarily be trusted
-        (address borrower, address repayCToken, address seizeCToken, uint repay) = abi.decode(data, (address, address, address, uint));
+        FlashSwapData memory d = abi.decode(data, (FlashSwapData));
 
         address token0 = IUniswapV2Pair(msg.sender).token0();
         address token1 = IUniswapV2Pair(msg.sender).token1();
         require(msg.sender == UniswapV2Library.pairFor(FACTORY, token0, token1), "Hacker no hacking");
 
-        if (repayCToken == seizeCToken) {
-            if (token0 == WETH) {
-                liquidateTypeA(borrower, repayCToken, seizeCToken, token1, amount1); // amount1 = repay
-                IWETH(WETH).withdraw(amount0);
-            } else {
-                liquidateTypeA(borrower, repayCToken, seizeCToken, token0, amount0); // amount0 = repay
-                IWETH(WETH).withdraw(amount1);
-            }
-            return;
+        // Ensure that the non-WETH token is stored in token0
+        if (token0 == WETH) token0 = token1;
+
+        // mode 2: repay any, seize eth
+        // mode 0: repay any, seize another (not eth)
+        // mode 3: repay eth, seize any
+        // mode 1: repay any, seize same
+
+        // liquidateCombo(
+        //     mode,
+        //     d,
+        //     token0,
+        //     mode % 2 != 0 ? token0 : CERC20Storage(seizeCToken).underlying()
+        // );
+
+        // Perform the liquidation
+        if (d.mode == 3) {
+            IWETH(WETH).withdraw(amount0 + amount1); // equivalent to max(amount0, amount1) since one is 0
+            CEther(CETH).liquidateBorrow{ value: d.repay }(d.borrower, d.seizeCToken);
+        } else {
+            IERC20(token0).approve(d.repayCToken, d.repay);
+            CERC20(d.repayCToken).liquidateBorrow(d.borrower, d.repay, d.seizeCToken);
         }
-
-        if (repayCToken == CETH) {
-            // Either amount0 or amount1 will be 0, so summing results in the larger of the 2
-            liquidateTypeB(
-                borrower,
-                seizeCToken,
-                token0 == WETH ? token1 : token0,
-                amount0 + amount1,
-                repay
-            );
-            return;
-        }
-
-        if (seizeCToken == CETH) {
-            liquidateTypeC(
-                borrower,
-                repayCToken,
-                seizeCToken,
-                token0 == WETH ? token1 : token0,
-                repay // repay = amount0 + amount1
-            );
-            return;
-        }
-
-        liquidateTypeD(
-            borrower,
-            repayCToken,
-            seizeCToken,
-            token0 == WETH ? token1 : token0,
-            CERC20Storage(seizeCToken).underlying(),
-            repay // repay = amount0 + amount1
-        );
-        IWETH(WETH).withdraw(IERC20(WETH).balanceOf(address(this)));
-    }
-
-    function liquidateTypeA(address _borrower, address _repayCToken, address _seizeCToken, address _repayToken, uint _repay) private {
-        // Perform the liquidation
-        IERC20(_repayToken).approve(_repayCToken, _repay);
-        CERC20(_repayCToken).liquidateBorrow(_borrower, _repay, _seizeCToken);
-
-        // Redeem cTokens for underlying ERC20
-        uint seized = CERC20(_seizeCToken).balanceOfUnderlying(address(this));
-        CERC20(_seizeCToken).redeemUnderlying(seized);
-
-        // Pay back pair
-        IERC20(_repayToken).transfer(msg.sender, seized);
-    }
-
-    function liquidateTypeB(address _borrower, address _seizeCToken, address _seizeToken, uint _all, uint _repay) private {
-        // Convert WETH to ETH
-        IWETH(WETH).withdraw(_all);
-
-        // Perform the liquidation
-        CEther(CETH).liquidateBorrow{value: _repay}(_borrower, _seizeCToken);
-
-        // Redeem cTokens for underlying ERC20
-        uint seized = CERC20(_seizeCToken).balanceOfUnderlying(address(this));
-        CERC20(_seizeCToken).redeemUnderlying(seized);
-
-        // Pay back pair
-        IERC20(_seizeToken).transfer(msg.sender, seized);
-    }
-
-    function liquidateTypeC(address _borrower, address _repayCToken, address _seizeCToken, address _repayToken, uint _repay) private {
-        // Perform the liquidation
-        IERC20(_repayToken).approve(_repayCToken, _repay);
-        CERC20(_repayCToken).liquidateBorrow(_borrower, _repay, _seizeCToken);
-
-        // Redeem cTokens for underlying ETH
-        uint seized = CERC20(_seizeCToken).balanceOfUnderlying(address(this));
-        CERC20(_seizeCToken).redeemUnderlying(seized);
-
-        // Convert enough ETH to WETH to pay off debt
-        (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, _repayToken, WETH);
-        uint debt = UniswapV2Library.getAmountIn(_repay, reserveIn, reserveOut);
-        IWETH(WETH).deposit{ value: debt }();
-
-        // Pay back pair
-        IERC20(WETH).transfer(msg.sender, debt);
-
-        // seized - debt is leftover ETH
-    }
-
-    function liquidateTypeD(address _borrower, address _repayCToken, address _seizeCToken, address _repayToken, address _seizeToken, uint _repay) private {
-        // Perform the liquidation
-        IERC20(_repayToken).approve(_repayCToken, _repay);
-        CERC20(_repayCToken).liquidateBorrow(_borrower, _repay, _seizeCToken);
 
         // Redeem cTokens for underlying ERC20 or ETH
-        uint seized = CERC20(_seizeCToken).balanceOfUnderlying(address(this));
-        CERC20(_seizeCToken).redeemUnderlying(seized);
+        uint seized = CERC20(d.seizeCToken).balanceOfUnderlying(address(this));
+        CERC20(d.seizeCToken).redeemUnderlying(seized);
+
+        if (d.mode % 2 != 0) { // modes 1 and 3
+            IERC20(token0).transfer(msg.sender, seized);
+            return;
+        }
 
         // Compute debt
-        (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, _repayToken, WETH);
-        uint debt = UniswapV2Library.getAmountIn(_repay, reserveIn, reserveOut);
+        (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, token0, WETH);
+        uint debt = UniswapV2Library.getAmountIn(d.repay, reserveIn, reserveOut);
 
-        // Nested trade and pay back pair
-        tradeForWETH(_seizeToken, seized, debt);
-        IERC20(WETH).transfer(msg.sender, debt);
+        // Pay back pair
+        if (d.mode == 0) {
+            tradeForWETH(CERC20Storage(d.seizeCToken).underlying(), seized, debt);
+            IERC20(WETH).transfer(msg.sender, debt);
+        } else { // mode 2
+            IWETH(WETH).deposit{ value: debt }();
+            IERC20(WETH).transfer(msg.sender, debt);
+        }
     }
+
+    struct FlashSwapData {
+        uint mode;
+        address borrower;
+        address repayCToken;
+        address seizeCToken;
+        uint repay;
+    }
+
+    // function liquidateCombo(uint _mode, FlashSwapData calldata _d, address _repayToken, address _seizeToken) private {
+    //     // Perform the liquidation
+    //     if (mode == 3) {
+    //         IWETH(WETH).withdraw(_all);
+    //         CEther(CETH).liquidateBorrow{ value: _repay }(_borrower, _seizeCToken);
+    //     } else {
+    //         IERC20(_repayToken).approve(_d.repayCToken, _d.repay);
+    //         CERC20(_d.repayCToken).liquidateBorrow(_d.borrower, _d.repay, _d.seizeCToken);
+    //     }
+
+    //     // Redeem cTokens for underlying ERC20 or ETH
+    //     CERC20(_d.seizeCToken).redeemUnderlying(_d.seize);
+
+    //     if (_mode == 3) {
+    //         IERC20(_seizeToken).transfer(msg.sender, seized);
+    //         return;
+    //     } else if (_mode == 1) {
+    //         IERC20(_repayToken).transfer(msg.sender, seized);
+    //         return;
+    //     }
+
+    //     // Compute debt
+    //     (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, _repayToken, WETH);
+    //     uint debt = UniswapV2Library.getAmountIn(_d.repay, reserveIn, reserveOut);
+
+    //     // Pay back pair
+    //     if (_mode == 2) {
+    //         IWETH(WETH).deposit{ value: debt }();
+    //         IERC20(WETH).transfer(msg.sender, debt);
+    //     } else if (_mode == 0) {
+    //         tradeForWETH(_seizeToken, seized, debt);
+    //         IERC20(WETH).transfer(msg.sender, debt);
+    //     }
+    // }
 
     function tradeForWETH(address _offered, uint _exactSent, uint _minReceived) private {
         IERC20(_offered).approve(ROUTER, _exactSent);

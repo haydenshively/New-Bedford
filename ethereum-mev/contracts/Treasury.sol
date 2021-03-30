@@ -156,6 +156,11 @@ contract Treasury is LiquidationCallee {
                 if (_amount > maxPayout) _amount = maxPayout;
 
                 owner.transfer(_amount);
+            } else if (_asset == 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2) {
+                IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).withdraw(_amount);
+                owner.transfer(_amount);
+                emit RevenueDistributed(ETH, _amount);
+                return;
             } else {
                 IERC20(_asset).transfer(owner, _amount);
             }
