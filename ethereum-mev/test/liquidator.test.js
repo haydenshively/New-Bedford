@@ -214,4 +214,28 @@ contract("Liquidator Test", (accounts) => {
       "24"
     );
   });
+
+  it("should repay ETH and seize (a lot of) USDC @awesome-block", async () => {
+    const liquidator = await Liquidator.deployed();
+
+    const tx = await liquidator.liquidateS(
+      "0xb5535a3681cf8d5431b8acfd779e2f79677ecce9",
+      "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+      "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+      5000
+    );
+    assert.isTrue(tx.receipt.status);
+
+    const events = tx.receipt.rawLogs;
+    assert.equal(events.length, 18);
+
+    console.log(`Gas used: ${tx.receipt.gasUsed}`);
+
+    await checkRevenue(
+      liquidator,
+      events[events.length - 1],
+      "0x0000000000000000000000000000000000000000", // ETH
+      5000
+    );
+  });
 });

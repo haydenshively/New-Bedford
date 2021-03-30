@@ -22,11 +22,6 @@ const mainnet_alchemy = ProviderFor("mainnet", {
 });
 const maxUINT256 = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
-const mainnet_ipc = ProviderFor("mainnet", {
-  type: "IPC",
-  envKeyPath: "PROVIDER_IPC_PATH",
-})
-
 const ganacheServerConfig = {
   fork: mainnet_ws,
   accounts: [
@@ -42,9 +37,13 @@ const ganacheServerConfig = {
 };
 const mochaConfig = { grep: "@latest-block" };
 if (process.env.KNOWN_BLOCK === "true") {
-  ganacheServerConfig.fork = mainnet_ipc;
-  // ganacheServerConfig.fork_block_number = "12138570";
+  ganacheServerConfig.fork = mainnet_alchemy;
+  ganacheServerConfig.fork_block_number = "12138570";
   mochaConfig.grep = "@known-block";
+} else if (process.env.KNOWN_BLOCK !== undefined) {
+  ganacheServerConfig.fork = mainnet_alchemy;
+  ganacheServerConfig.fork_block_number = String(process.env.KNOWN_BLOCK);
+  mochaConfig.grep = "@awesome-block";
 }
 
 // Start ganache server. Sometimes it won't get used, but this seems to be the

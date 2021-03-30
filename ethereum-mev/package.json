@@ -34,6 +34,7 @@
     "test-known-block": "KNOWN_BLOCK=true npx truffle test --network ganache",
     "test-known-block-verbose": "KNOWN_BLOCK=true npx truffle test --network ganache --show-events",
     "test-known-block-verbose-trace": "KNOWN_BLOCK=true npx truffle test --network ganache --show-events --stacktrace",
+    "test-awesome-block": "KNOWN_BLOCK=12122486 npx truffle test --network ganache",
     "deploy-production": "npx truffle migrate --network production",
     "console-production": "npx truffle console --network production"
   },
