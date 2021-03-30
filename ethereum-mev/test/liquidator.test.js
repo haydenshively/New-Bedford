@@ -38,19 +38,19 @@ contract("Liquidator Test", (accounts) => {
     const treasury = await Treasury.deployed();
 
     const tx = await liquidator.liquidateS(
-      "0x8d06a175660cfe52d9ce82fedb58e25c02e8ae8c",
+      "0x3cb5c393bb8941561657437605dc188588d78fe1",
       "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
       "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643"
     );
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 28);
+    assert.equal(events.length, 18);
 
     checkRevenueDistributed(
       treasury,
       events[events.length - 1],
-      "0x6B175474E89094C44Da98b954EedeAC495271d0F" // DAI
+      "0x0000000000000000000000000000000000000000" // ETH
     );
   });
 
@@ -59,65 +59,65 @@ contract("Liquidator Test", (accounts) => {
     const treasury = await Treasury.deployed();
 
     const tx = await liquidator.liquidateS(
-      "0x2284de4652f31749d4c42dd663f68487d9d7cf42",
+      "0x77875aa8ea7f113eb08c7a2aa4c2975944b0f77b",
       "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
-      "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+      "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643"
     );
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 38);
+    assert.equal(events.length, 20);
 
     checkRevenueDistributed(
       treasury,
       events[events.length - 1],
-      "0x6B175474E89094C44Da98b954EedeAC495271d0F" // DAI
+      "0x0000000000000000000000000000000000000000" // ETH
     );
   });
 
-  it("should repay DAI and seize ETH @known-block", async () => {
+  it("should repay USDC and seize ETH @known-block", async () => {
     const liquidator = await Liquidator.deployed();
     const treasury = await Treasury.deployed();
 
     const tx = await liquidator.liquidateS(
-      "0x2284de4652f31749d4c42dd663f68487d9d7cf42",
-      "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+      "0xdec7eccd6e1abf4149b36ad5dd53afaf20eaa1a7",
+      "0x39aa39c021dfbae8fac545936693ac917d5e7563",
       "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5"
     );
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 28);
+    assert.equal(events.length, 21);
 
     checkRevenueDistributed(
       treasury,
       events[events.length - 1],
-      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" // WETH
+      "0x0000000000000000000000000000000000000000" // ETH
     );
   });
 
-  it("should repay WBTC and seize USDC @known-block", async () => {
+  it("should repay BAT and seize UNI @known-block", async () => {
     const liquidator = await Liquidator.deployed();
     const treasury = await Treasury.deployed();
 
     const tx = await liquidator.liquidateS(
-      "0x9d2435a72fd9033fdc4063fee15c22df40dd68dd",
-      "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4",
-      "0x39aa39c021dfbae8fac545936693ac917d5e7563"
+      "0xcb6681e95a56ab115d8be22c70299c7d47f943fc",
+      "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
+      "0x35a18000230da775cac24873d00ff85bccded550"
     );
     assert.isTrue(tx.receipt.status);
 
     const events = tx.receipt.rawLogs;
-    assert.equal(events.length, 26);
+    assert.equal(events.length, 27);
 
     checkRevenueDistributed(
       treasury,
       events[events.length - 1],
-      "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" // USDC
+      "0x0000000000000000000000000000000000000000" // ETH
     );
   });
 
-  it("should liquidate one from list with CHI @known-block", async () => {
+  xit("should liquidate one from list with CHI @known-block", async () => {
     const liquidator = await Liquidator.deployed();
     const treasury = await Treasury.deployed();
 
@@ -136,14 +136,14 @@ contract("Liquidator Test", (accounts) => {
     // THE RESULT OF THE FOLLOWING TXN IS TESTED HERE ----------------
     // now perform actual liquidation
     const borrowers = [
-      "0x18fc6e5341d57c757659b888db134c2eb366e97b",
-      "0x6e197190de43166839665157274ee695456259f7",
+      "0x07737955549eef53a7845543dc20510f50903884",
+      "0x62b566fc95998f5cdee258482eab377cd8a412ec",
     ];
     const tokens = [
-      "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4", // cWBTC
-      "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407", // cZRX
       "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5", // cETH
-      "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e", // cBAT
+      "0x39aa39c021dfbae8fac545936693ac917d5e7563", // cUSDC
+      "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643", // cDAI
+      "0x39aa39c021dfbae8fac545936693ac917d5e7563", // cUSDC
     ];
 
     const tx = await liquidator.liquidateSNChi(borrowers, tokens);
@@ -166,7 +166,7 @@ contract("Liquidator Test", (accounts) => {
     );
   });
 
-  it("should delegate from proxy to liquidator @known-block", async () => {
+  xit("should delegate from proxy to liquidator @known-block", async () => {
     const treasury = await Treasury.deployed();
 
     const wrapperAddress = await treasury.liquidatorWrapper();

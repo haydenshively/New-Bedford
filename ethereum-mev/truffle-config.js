@@ -22,6 +22,11 @@ const mainnet_alchemy = ProviderFor("mainnet", {
 });
 const maxUINT256 = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
+const mainnet_ipc = ProviderFor("mainnet", {
+  type: "IPC",
+  envKeyPath: "PROVIDER_IPC_PATH",
+})
+
 const ganacheServerConfig = {
   fork: mainnet_ws,
   accounts: [
@@ -37,8 +42,8 @@ const ganacheServerConfig = {
 };
 const mochaConfig = { grep: "@latest-block" };
 if (process.env.KNOWN_BLOCK === "true") {
-  ganacheServerConfig.fork = mainnet_alchemy;
-  ganacheServerConfig.fork_block_number = "11527070";
+  ganacheServerConfig.fork = mainnet_ipc;
+  // ganacheServerConfig.fork_block_number = "12132635";
   mochaConfig.grep = "@known-block";
 }
 

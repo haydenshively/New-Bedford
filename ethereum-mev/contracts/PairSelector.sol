@@ -32,11 +32,10 @@ contract PairSelector {
      * if _repayCToken == _seizeCToken -->  WETH-REPAY pair
      * if _seizeCToken == CETH -->          WETH-REPAY pair
      * if _repayCToken == CETH -->          WETH-SEIZE pair
-     * else -->                             REPAY-SEIZE or WETH-REPAY, whichever is better
+     * else -->                             WETH-REPAY, slippage computed based on 2-hop swap
      *
      * @param _repayCToken (address): a CToken for which the user is in debt
      * @param _seizeCToken (address): a CToken for which the user has a supply balance
-     * @param _seize (uint): the amount (specified in units of _seizeCToken.underlying) that can be seized
      * @return pair info (
      *      pair address,
      *      token address that should be flash borrowed from the pair,
@@ -45,11 +44,9 @@ contract PairSelector {
      */
     function selectPairSlippageAware(
         address _repayCToken,
-        address _seizeCToken,
-        uint _seize
-    ) internal view returns (address pair, address outToken, uint maxSwap) {
+        address _seizeCToken
+    ) internal view returns (address pair, address outToken, uint maxSwap, uint inTokenReserves, uint outTokenReserves) {
         address inToken;
-        uint inTokenReserves;
 
         if (_repayCToken == _seizeCToken || _seizeCToken == CETH) {
             outToken = CERC20Storage(_repayCToken).underlying();
@@ -66,39 +63,30 @@ contract PairSelector {
             inToken = CERC20Storage(_seizeCToken).underlying();
             // ...logic is self-contained to this case
 
-            // See if direct swap has sufficient liquidity
-            ( , inTokenReserves, pair) = UniswapV2Library.getReservesWithPair(
+            // If it doesn't, see if REPAY->ETH + SEIZE->ETH would be better
+            uint wETHReserves2;
+            ( , wETHReserves2, pair) = UniswapV2Library.getReservesWithPair(
                 FACTORY,
                 outToken,
+                WETH
+            );
+            (outTokenReserves, inTokenReserves, ) = UniswapV2Library.getReservesWithPair(
+                FACTORY,
+                WETH,
                 inToken
             );
-            maxSwap = computeMaxInputGivenSlippage(SLIPPAGE_THRESHOLD, inTokenReserves);
-            if (_seize <= maxSwap) return (pair, outToken, maxSwap);
-
-            // If it doesn't, see if REPAY->ETH + SEIZE->ETH would be better
-            ( , uint wETHReserves2, address pairAlt) = UniswapV2Library.getReservesWithPair(
-                FACTORY,
-                outToken,
-                WETH
-            );
-            (uint seizeTokenReservesAlt, uint wETHReserves1, ) = UniswapV2Library.getReservesWithPair(
-                FACTORY,
-                inToken,
-                WETH
-            );
-            uint maxSwapAlt = computeMaxInputGivenSlippageTwoHop(
+            maxSwap = computeMaxInputGivenSlippageTwoHop(
                 SLIPPAGE_THRESHOLD,
-                seizeTokenReservesAlt,
-                wETHReserves1,
+                inTokenReserves,
+                outTokenReserves, // could be called "wETHReserves1"
                 wETHReserves2
             );
 
-            if (maxSwapAlt > maxSwap) return (pairAlt, outToken, maxSwapAlt);
-            return (pair, outToken, maxSwap);
+            return (pair, outToken, maxSwap, 0, 0);
         }
 
         // Computes pair without external call, then fetches reserve size
-        ( , inTokenReserves, pair) = UniswapV2Library.getReservesWithPair(
+        (outTokenReserves, inTokenReserves, pair) = UniswapV2Library.getReservesWithPair(
             FACTORY,
             outToken,
             inToken

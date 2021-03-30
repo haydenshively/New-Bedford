@@ -29,6 +29,10 @@ contract Liquidator is PairSelector {
 
     address private constant CHI = 0x0000000000004946c0e9F43F4Dee607b0eF1fA1c;
 
+    uint private constant FUZZY_NUM = 999;
+
+    uint private constant FUZZY_DEN = 1000;
+
     address payable private immutable treasury;
 
     Comptroller public comptroller;
@@ -150,8 +154,15 @@ contract Liquidator is PairSelector {
         uint _repay,
         uint _seize
     ) public {
-        (address pair, address flashToken, uint maxSwap) = selectPairSlippageAware(_repayCToken, _seizeCToken, _seize);
+        (
+            address pair,
+            address flashToken,
+            uint maxSwap,
+            uint reserveIn,
+            uint reserveOut
+        ) = selectPairSlippageAware(_repayCToken, _seizeCToken);
 
+        uint temp;
         /**
          * If we would have to pay more than a 5% premium to swap _seize,
          * then lower _seize such that it sits right at the 5% premium.
@@ -168,20 +179,45 @@ contract Liquidator is PairSelector {
          *      incentive as high as the Open Price Feed's anchor bounds.
          *      20% is much too high, so we leave this problem for V2.
          */
-        if (_seize > maxSwap) _repay = maxSwap * _repay / _seize;
+        if (_seize > maxSwap) {
+            temp = _repay;
+            _repay *= maxSwap / _seize;
+            _seize *= maxSwap / temp;
+        }
 
         // Initiate flash swap
-        bytes memory data = abi.encode(_borrower, _repayCToken, _seizeCToken);
-        uint amount0 = IUniswapV2Pair(pair).token0() == flashToken ? _repay : 0;
-        uint amount1 = IUniswapV2Pair(pair).token1() == flashToken ? _repay : 0;
+        bytes memory data = abi.encode(_borrower, _repayCToken, _seizeCToken, _repay);
+        uint amount0;
+        uint amount1;
+
+        if (_repayCToken == _seizeCToken) {
+            unchecked { temp = 997 * _seize; }
+
+            // Both amount0 and amount1 will be non-zero since we want to end up with ETH
+            if (IUniswapV2Pair(pair).token0() == flashToken) {
+                amount0 = _repay;
+                amount1 = reserveIn * (temp - 1000 * _repay) / (1000 * (reserveOut - _repay) + temp) * FUZZY_NUM / FUZZY_DEN;
+            } else {
+                amount0 = reserveIn * (temp - 1000 * _repay) / (1000 * (reserveOut - _repay) + temp) * FUZZY_NUM / FUZZY_DEN;
+                amount1 = _repay;
+            }
+
+        } else if (_repayCToken == CETH) {
+            if (IUniswapV2Pair(pair).token0() == flashToken) {
+                amount0 = UniswapV2Library.getAmountOut(_seize, reserveIn, reserveOut) * FUZZY_NUM / FUZZY_DEN;
+                amount1 = 0;
+            } else {
+                amount0 = 0;
+                amount1 = UniswapV2Library.getAmountOut(_seize, reserveIn, reserveOut) * FUZZY_NUM / FUZZY_DEN;
+            }
+
+        } else {
+            if (IUniswapV2Pair(pair).token0() == flashToken) amount0 = _repay;
+            else amount1 = _repay;
+        }
 
         IUniswapV2Pair(pair).swap(amount0, amount1, treasury, data);
-        payout(_seizeCToken);
-    }
-
-    function payout(address _seizeCToken) internal {
-        if (_seizeCToken == CETH) ITreasury(treasury).payoutMax(WETH);
-        else ITreasury(treasury).payoutMax(CERC20Storage(_seizeCToken).underlying());
+        ITreasury(treasury).payoutMax(address(0));
     }
 
     function liquidateSChi(address _borrower, address _repayCToken, address _seizeCToken) external discountCHI {
