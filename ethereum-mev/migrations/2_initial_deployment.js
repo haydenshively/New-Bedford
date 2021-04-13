@@ -19,5 +19,5 @@ module.exports = (deployer, network, accounts) => {
       console.error("Unknown network -- constructor args unspecified");
   }
 
-  deployer.deploy(Liquidator, comptroller, { from: vanityDeployer });
+  deployer.deploy(Liquidator, { from: vanityDeployer });
 };

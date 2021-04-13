@@ -25,10 +25,6 @@ contract Liquidator is PairSelector, LiquidationCallee {
 
     address private constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
 
-    address private constant CHI = 0x0000000000004946c0e9F43F4Dee607b0eF1fA1c;
-
-    uint private constant GAS_THRESHOLD = 2000000;
-
     uint private constant FUZZY_NUM = 999;
 
     uint private constant FUZZY_DEN = 1000;
@@ -43,18 +39,26 @@ contract Liquidator is PairSelector, LiquidationCallee {
 
     uint private liqIncent;
 
-    event Revenue(address asset, uint amount);
+    uint private totalMinted;
+
+    uint private totalBurned;
+
+    event Revenue(uint amount);
 
     modifier discountCHI {
-        uint gasStart = gasleft();
+        uint x = gasleft();
         _;
-        uint gasSpent = 21000 + gasStart - gasleft() + 16 * msg.data.length;
-        ICHI(CHI).freeUpTo((gasSpent + 14154) / 41947);
+        unchecked {
+            x = (21000 + x - gasleft() + 16 * msg.data.length + 14154) / 41947;
+            if (x > totalMinted - totalBurned) x = totalMinted - totalBurned;
+        }
+
+        if (x != 0) _destroyChildren(x);
     }
 
-    constructor(address _comptrollerAddress) {
-        owner = payable(msg.sender);
-        _setComptroller(_comptrollerAddress);
+    constructor() {
+        owner = payable(0xF1c73bb23934127A2C1Fa4bA7520822574fE9bA7);
+        _setComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
     }
 
     /// @dev Allows owner to change their address
@@ -79,10 +83,6 @@ contract Liquidator is PairSelector, LiquidationCallee {
         oracle = UniswapAnchoredView(comptroller.oracle());
         closeFact = comptroller.closeFactorMantissa();
         liqIncent = comptroller.liquidationIncentiveMantissa();
-    }
-
-    function mintCHI(uint _amount) external {
-        ICHI(CHI).mint(_amount);
     }
 
     function payout(address _asset, uint _amount) public {
@@ -137,16 +137,12 @@ contract Liquidator is PairSelector, LiquidationCallee {
         b = liquidate(_borrower, _repayCToken, _seizeCToken, c, d);
 
         if (_toMiner != 0) {
-            if (b == 0 || b == 1) {
+            if (b == 0 || b == 1)
                 IWETH(WETH).withdraw(IERC20(WETH).balanceOf(address(this)));
-                c = address(this).balance - a;
-                block.coinbase.transfer(c * _toMiner / 10_000);
-                emit Revenue(WETH, c);
-            } else {
-                c = address(this).balance - a;
-                block.coinbase.transfer(c * _toMiner / 10_000);
-                emit Revenue(address(0), c);
-            }
+            
+            c = address(this).balance - a;
+            block.coinbase.transfer(c * _toMiner / 10_000);
+            emit Revenue(c);
         }
     }
 
@@ -229,5 +225,75 @@ contract Liquidator is PairSelector, LiquidationCallee {
     ) external discountCHI {
         oracle.postPrices(_messages, _signatures, _symbols);
         liquidateS(_borrower, _repayCToken, _seizeCToken, _toMiner);
+    }
+
+    // https://github.com/1inch/chi/blob/master/contracts/ChiToken.sol
+    function mintCHI(uint256 value) external {
+        uint256 offset = totalMinted;
+        assembly {
+            mstore(0, add(
+                add(
+                    0x746d000000000000000000000000000000000000000000000000000000000000,
+                    shl(0x80, address())
+                ),
+                0x3318585733ff6000526015600bf30000
+            ))
+
+            for {let i := div(value, 32)} i {i := sub(i, 1)} {
+                pop(create2(0, 0, 30, add(offset, 0))) pop(create2(0, 0, 30, add(offset, 1)))
+                pop(create2(0, 0, 30, add(offset, 2))) pop(create2(0, 0, 30, add(offset, 3)))
+                pop(create2(0, 0, 30, add(offset, 4))) pop(create2(0, 0, 30, add(offset, 5)))
+                pop(create2(0, 0, 30, add(offset, 6))) pop(create2(0, 0, 30, add(offset, 7)))
+                pop(create2(0, 0, 30, add(offset, 8))) pop(create2(0, 0, 30, add(offset, 9)))
+                pop(create2(0, 0, 30, add(offset, 10))) pop(create2(0, 0, 30, add(offset, 11)))
+                pop(create2(0, 0, 30, add(offset, 12))) pop(create2(0, 0, 30, add(offset, 13)))
+                pop(create2(0, 0, 30, add(offset, 14))) pop(create2(0, 0, 30, add(offset, 15)))
+                pop(create2(0, 0, 30, add(offset, 16))) pop(create2(0, 0, 30, add(offset, 17)))
+                pop(create2(0, 0, 30, add(offset, 18))) pop(create2(0, 0, 30, add(offset, 19)))
+                pop(create2(0, 0, 30, add(offset, 20))) pop(create2(0, 0, 30, add(offset, 21)))
+                pop(create2(0, 0, 30, add(offset, 22))) pop(create2(0, 0, 30, add(offset, 23)))
+                pop(create2(0, 0, 30, add(offset, 24))) pop(create2(0, 0, 30, add(offset, 25)))
+                pop(create2(0, 0, 30, add(offset, 26))) pop(create2(0, 0, 30, add(offset, 27)))
+                pop(create2(0, 0, 30, add(offset, 28))) pop(create2(0, 0, 30, add(offset, 29)))
+                pop(create2(0, 0, 30, add(offset, 30))) pop(create2(0, 0, 30, add(offset, 31)))
+                offset := add(offset, 32)
+            }
+
+            for {let i := and(value, 0x1F)} i {i := sub(i, 1)} {
+                pop(create2(0, 0, 30, offset))
+                offset := add(offset, 1)
+            }
+        }
+
+        totalMinted = offset;
+    }
+
+    // https://github.com/1inch/chi/blob/master/contracts/ChiToken.sol
+    function _destroyChildren(uint256 value) private {
+        assembly {
+            let i := sload(totalBurned.slot)
+            let end := add(i, value)
+            sstore(totalBurned.slot, end)
+
+            let data := mload(0x40)
+            mstore(data, add(
+                0xff00000000000000000000000000000000000000000000000000000000000000,
+                shl(0x58, address())
+            ))
+            mstore(add(data, 53), add(
+                add(
+                    0x746d000000000000000000000000000000000000000000000000000000000000,
+                    shl(0x80, address())
+                ),
+                0x3318585733ff6000526015600bf30000
+            ))
+            mstore(add(data, 53), keccak256(add(data, 53), 30))
+
+            let ptr := add(data, 21)
+            for { } lt(i, end) { i := add(i, 1) } {
+                mstore(ptr, i)
+                pop(call(gas(), keccak256(data, 85), 0, 0, 0, 0, 0))
+            }
+        }
     }
 }
