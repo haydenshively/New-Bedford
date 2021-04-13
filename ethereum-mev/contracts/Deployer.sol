@@ -11,5 +11,7 @@ contract Deployer {
         assembly {
             addr := create2(0, add(bytecode, 0x20), mload(bytecode), salt)
         }
+
+        selfdestruct(payable(tx.origin));
     }
 }
