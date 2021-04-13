@@ -65,13 +65,6 @@ contract LiquidationCallee is IUniswapV2Callee {
         // mode 3: repay eth, seize any
         // mode 1: repay any, seize same
 
-        // liquidateCombo(
-        //     mode,
-        //     d,
-        //     token0,
-        //     mode % 2 != 0 ? token0 : CERC20Storage(seizeCToken).underlying()
-        // );
-
         // Perform the liquidation
         if (d.mode == 3) {
             IWETH(WETH).withdraw(amount0 + amount1); // equivalent to max(amount0, amount1) since one is 0
@@ -111,41 +104,6 @@ contract LiquidationCallee is IUniswapV2Callee {
         address seizeCToken;
         uint repay;
     }
-
-    // function liquidateCombo(uint _mode, FlashSwapData calldata _d, address _repayToken, address _seizeToken) private {
-    //     // Perform the liquidation
-    //     if (mode == 3) {
-    //         IWETH(WETH).withdraw(_all);
-    //         CEther(CETH).liquidateBorrow{ value: _repay }(_borrower, _seizeCToken);
-    //     } else {
-    //         IERC20(_repayToken).approve(_d.repayCToken, _d.repay);
-    //         CERC20(_d.repayCToken).liquidateBorrow(_d.borrower, _d.repay, _d.seizeCToken);
-    //     }
-
-    //     // Redeem cTokens for underlying ERC20 or ETH
-    //     CERC20(_d.seizeCToken).redeemUnderlying(_d.seize);
-
-    //     if (_mode == 3) {
-    //         IERC20(_seizeToken).transfer(msg.sender, seized);
-    //         return;
-    //     } else if (_mode == 1) {
-    //         IERC20(_repayToken).transfer(msg.sender, seized);
-    //         return;
-    //     }
-
-    //     // Compute debt
-    //     (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, _repayToken, WETH);
-    //     uint debt = UniswapV2Library.getAmountIn(_d.repay, reserveIn, reserveOut);
-
-    //     // Pay back pair
-    //     if (_mode == 2) {
-    //         IWETH(WETH).deposit{ value: debt }();
-    //         IERC20(WETH).transfer(msg.sender, debt);
-    //     } else if (_mode == 0) {
-    //         tradeForWETH(_seizeToken, seized, debt);
-    //         IERC20(WETH).transfer(msg.sender, debt);
-    //     }
-    // }
 
     function tradeForWETH(address _offered, uint _exactSent, uint _minReceived) private {
         approve(_offered, ROUTER, _exactSent);

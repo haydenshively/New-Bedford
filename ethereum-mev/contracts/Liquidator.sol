@@ -117,32 +117,35 @@ contract Liquidator is PairSelector, LiquidationCallee {
      * @param _toMiner (uint): the portion of revenue to send to block.coinbase
      */
     function liquidateS(address _borrower, address _repayCToken, address _seizeCToken, uint _toMiner) public {
-        // [num seize tokens per repay token] = num / den / 1e18
-        uint num = oracle.getUnderlyingPrice(_repayCToken) * liqIncent;
-        uint den = oracle.getUnderlyingPrice(_seizeCToken);
+        // [num seize tokens per repay token] = a / b / 1e18
+        uint a = oracle.getUnderlyingPrice(_repayCToken) * liqIncent;
+        uint b = oracle.getUnderlyingPrice(_seizeCToken);
 
         // max possible repay, constrained by borrow
-        uint a = CERC20(_repayCToken).borrowBalanceStored(_borrower) * closeFact / 1e18; // 0 extra decimals
+        uint c = CERC20(_repayCToken).borrowBalanceStored(_borrower) * closeFact / 1e18;
         // max possible repay, constrained by supply
-        uint b = CERC20(_seizeCToken).balanceOf(_borrower) * CERC20(_seizeCToken).exchangeRateStored() * den / num;// seizeTokensPerRepayToken; // 0 extra decimals
+        uint d = CERC20(_seizeCToken).balanceOf(_borrower) * CERC20(_seizeCToken).exchangeRateStored() * b / a;
         
         // max possible repay, overall
-        a = a < b ? a : b;
+        c = c < d ? c : d;
         // corresponding seize amount
-        b = a * num / den / 1e18;
+        d = c * a / b / 1e18;
 
-        uint mode = liquidate(_borrower, _repayCToken, _seizeCToken, a, b);
+        // initial balance (to compare against later)
+        a = address(this).balance;
+        // perform liquidation and store the "mode" parameter
+        b = liquidate(_borrower, _repayCToken, _seizeCToken, c, d);
 
         if (_toMiner != 0) {
-            if (mode == 0 || mode == 1) {
+            if (b == 0 || b == 1) {
                 IWETH(WETH).withdraw(IERC20(WETH).balanceOf(address(this)));
-                uint balance = address(this).balance;
-                block.coinbase.transfer(balance * _toMiner / 10_000);
-                emit Revenue(WETH, balance);
+                c = address(this).balance - a;
+                block.coinbase.transfer(c * _toMiner / 10_000);
+                emit Revenue(WETH, c);
             } else {
-                uint balance = address(this).balance;
-                block.coinbase.transfer(balance * _toMiner / 10_000);
-                emit Revenue(address(0), balance);
+                c = address(this).balance - a;
+                block.coinbase.transfer(c * _toMiner / 10_000);
+                emit Revenue(address(0), c);
             }
         }
     }
