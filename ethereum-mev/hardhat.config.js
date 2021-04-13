@@ -4,6 +4,19 @@ require("dotenv-safe").config({
 
 require("@nomiclabs/hardhat-truffle5");
 
+const mochaConfig = {
+  timeout: 180000,
+  grep: "@latest-block",
+};
+let blockToFork = undefined;
+if (process.env.KNOWN_BLOCK === "true") {
+  blockToFork = 12138570;
+  mochaConfig.grep = "@known-block";
+} else if (process.env.KNOWN_BLOCK !== undefined) {
+  blockToFork = Number(process.env.KNOWN_BLOCK);
+  mochaConfig.grep = "@awesome-block";
+}
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -12,14 +25,14 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url:
-          "https://eth-mainnet.alchemyapi.io/v2/nIseWZfbUbq2OC06HrB5ouYBT6MX1aBc",
+        url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.PROVIDER_ALCHEMY_KEY}`,
+        blockNumber: blockToFork,
       },
       accounts: [
         {
           privateKey: process.env.ACCOUNT_SECRET_VANITY,
-          balance: '0xFFFFFFFFFFFFFFFF'
-        }
+          balance: "0xFFFFFFFFFFFFFFFF",
+        },
       ],
     },
     mainnet: {
@@ -45,7 +58,5 @@ module.exports = {
     tests: "./test",
     artifacts: "./build",
   },
-  mocha: {
-    timeout: 20000,
-  },
+  mocha: mochaConfig,
 };

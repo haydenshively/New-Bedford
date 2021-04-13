@@ -12,19 +12,29 @@ async function checkRevenue(liquidator, balanceBefore, event, asset, toMiner) {
 
   assert.notEqual(decoded.amount, "0");
 
-  const liquidatorBalanceDelta = Number(await web3.eth.getBalance(liquidator.address)) - balanceBefore;
+  const liquidatorBalanceDelta =
+    Number(await web3.eth.getBalance(liquidator.address)) - balanceBefore;
   const liquidatorBalanceRatio =
     Number(decoded.amount) / Number(liquidatorBalanceDelta);
   const expectedBalanceRatio = 10000 / (10000 - toMiner);
 
   console.log(`Balance ratio: ${liquidatorBalanceRatio}`);
-  assert.equal(Math.round(10 * liquidatorBalanceRatio / expectedBalanceRatio), 10);
+  assert.equal(
+    Math.round((10 * liquidatorBalanceRatio) / expectedBalanceRatio),
+    10
+  );
 }
 
-contract("Liquidator Test", (accounts) => {
-  it("should liquidate USDT and seize WBTC @latest-block", async () => {
-    const liquidator = await Liquidator.deployed();
+describe("Liquidator Contract Test", function () {
+  let accounts;
+  let liquidator;
 
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    liquidator = await Liquidator.new();
+  });
+
+  it("should liquidate USDT and seize WBTC @latest-block", async () => {
     const balance = Number(await web3.eth.getBalance(liquidator.address));
     const tx = await liquidator.liquidateS(
       "0xf2ea7df6e3636a69ae76073251a23acbbcca4478",
@@ -46,11 +56,9 @@ contract("Liquidator Test", (accounts) => {
       "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH
       6000
     );
-  })
+  });
 
   it("should repay ETH and seize DAI @known-block", async () => {
-    const liquidator = await Liquidator.deployed();
-
     const balance = Number(await web3.eth.getBalance(liquidator.address));
     const tx = await liquidator.liquidateS(
       "0x3cb5c393bb8941561657437605dc188588d78fe1",
@@ -75,8 +83,6 @@ contract("Liquidator Test", (accounts) => {
   });
 
   it("should repay DAI and seize DAI @known-block", async () => {
-    const liquidator = await Liquidator.deployed();
-
     const balance = Number(await web3.eth.getBalance(liquidator.address));
     const tx = await liquidator.liquidateS(
       "0x77875aa8ea7f113eb08c7a2aa4c2975944b0f77b",
@@ -101,8 +107,6 @@ contract("Liquidator Test", (accounts) => {
   });
 
   it("should repay USDC and seize ETH @known-block", async () => {
-    const liquidator = await Liquidator.deployed();
-
     const balance = Number(await web3.eth.getBalance(liquidator.address));
     const tx = await liquidator.liquidateS(
       "0xdec7eccd6e1abf4149b36ad5dd53afaf20eaa1a7",
@@ -127,8 +131,6 @@ contract("Liquidator Test", (accounts) => {
   });
 
   it("should repay BAT and seize UNI @known-block", async () => {
-    const liquidator = await Liquidator.deployed();
-
     const balance = Number(await web3.eth.getBalance(liquidator.address));
     const tx = await liquidator.liquidateS(
       "0xcb6681e95a56ab115d8be22c70299c7d47f943fc",
@@ -153,8 +155,6 @@ contract("Liquidator Test", (accounts) => {
   });
 
   it("should mint pseudo-CHI @latest-block", async () => {
-    const liquidator = await Liquidator.deployed();
-
     await web3.eth.sendTransaction({
       to: accounts[1],
       from: accounts[0],
@@ -166,8 +166,6 @@ contract("Liquidator Test", (accounts) => {
   });
 
   it("should liquidate with CHI @known-block", async () => {
-    const liquidator = await Liquidator.deployed();
-
     // THE RESULTS OF THE FOLLOWING 2 TXNS ARE TESTED ELSEWHERE ----
     // make sure owner has enough ETH to call the setLiquidator function
     await web3.eth.sendTransaction({
@@ -204,8 +202,6 @@ contract("Liquidator Test", (accounts) => {
   });
 
   it("should liquidate with CHI again @known-block", async () => {
-    const liquidator = await Liquidator.deployed();
-
     const tx = await liquidator.liquidateSChi(
       "0x62b566fc95998f5cdee258482eab377cd8a412ec",
       "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643", // cDAI
@@ -221,8 +217,6 @@ contract("Liquidator Test", (accounts) => {
   });
 
   it("should repay ETH and seize (a lot of) USDC @awesome-block", async () => {
-    const liquidator = await Liquidator.deployed();
-
     const tx = await liquidator.liquidateS(
       "0xb5535a3681cf8d5431b8acfd779e2f79677ecce9",
       "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",

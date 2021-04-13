@@ -30,16 +30,12 @@
     "mocha": "^8.2.1"
   },
   "scripts": {
-    "compile": "npx truffle compile",
-    "test-latest-block": "npx truffle test --network ganache",
-    "test-latest-block-verbose": "npx truffle test --network ganache --show-events",
-    "test-latest-block-verbose-trace": "npx truffle test --network ganache --show-events --stacktrace",
-    "test-known-block": "KNOWN_BLOCK=true npx truffle test --network ganache",
-    "test-known-block-verbose": "KNOWN_BLOCK=true npx truffle test --network ganache --show-events",
-    "test-known-block-verbose-trace": "KNOWN_BLOCK=true npx truffle test --network ganache --show-events --stacktrace",
-    "test-awesome-block": "KNOWN_BLOCK=12122486 npx truffle test --network ganache",
-    "deploy-production": "npx truffle migrate --network production",
-    "console-production": "npx truffle console --network production"
+    "compile": "npx hardhat compile",
+    "test-latest-block": "npx hardhat test --network hardhat",
+    "test-latest-block-verbose": "npx hardhat test --network ganache --verbose",
+    "test-known-block": "KNOWN_BLOCK=true npx hardhat test --network hardhat",
+    "test-known-block-verbose": "KNOWN_BLOCK=true npx hardhat test --network hardhat --verbose",
+    "test-awesome-block": "KNOWN_BLOCK=12122486 npx hardhat test --network hardhat"
   },
   "repository": {
     "type": "git",
