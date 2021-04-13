@@ -40,6 +40,30 @@ function checkTokenTransferred(event, from, to, value) {
 }
 
 contract("Liquidator Test", (accounts) => {
+  it("should ienvrnev @latest-block", async () => {
+    const liquidator = await Liquidator.deployed();
+
+    const tx = await liquidator.liquidateS(
+      "0xf2ea7df6e3636a69ae76073251a23acbbcca4478",
+      "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9", // USDT FAILS!!!
+      "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4", // "0xccf4429db6322d5c611ee964527d42e5d685dd6a",
+      6000
+    );
+    assert.isTrue(tx.receipt.status);
+
+    const events = tx.receipt.rawLogs;
+    assert.equal(events.length, 18);
+
+    console.log(`Gas used: ${tx.receipt.gasUsed}`);
+
+    await checkRevenue(
+      liquidator,
+      events[events.length - 1],
+      "0x0000000000000000000000000000000000000000", // ETH
+      6000
+    );
+  })
+
   it("should repay ETH and seize DAI @known-block", async () => {
     const liquidator = await Liquidator.deployed();
 

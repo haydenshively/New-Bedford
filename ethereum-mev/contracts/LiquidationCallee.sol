@@ -29,6 +29,15 @@ contract LiquidationCallee is IUniswapV2Callee {
     // Boilerplate ------------------------------------------------------------------------
     receive() external payable {}
 
+    function approve(address _token, address _spender, uint _amount) private {
+        // 200 gas to read uint256
+        if (IERC20(_token).allowance(address(this), _spender) < _amount) {
+            // 20000 gas to write uint256 if changing from zero to non-zero
+            // 5000  gas to write uint256 if changing from non-zero to non-zero
+            IERC20(_token).safeApprove(_spender, type(uint256).max);
+        }
+    }
+
     /**
      * The function that gets called in the middle of a flash swap in order to liquidate an
      * account on Compound. This function assumes that the contract doesn't own and CTokens
@@ -68,7 +77,7 @@ contract LiquidationCallee is IUniswapV2Callee {
             IWETH(WETH).withdraw(amount0 + amount1); // equivalent to max(amount0, amount1) since one is 0
             CEther(CETH).liquidateBorrow{ value: d.repay }(d.borrower, d.seizeCToken);
         } else {
-            IERC20(token0).approve(d.repayCToken, d.repay);
+            approve(token0, d.repayCToken, d.repay);
             CERC20(d.repayCToken).liquidateBorrow(d.borrower, d.repay, d.seizeCToken);
         }
 
@@ -139,7 +148,7 @@ contract LiquidationCallee is IUniswapV2Callee {
     // }
 
     function tradeForWETH(address _offered, uint _exactSent, uint _minReceived) private {
-        IERC20(_offered).approve(ROUTER, _exactSent);
+        approve(_offered, ROUTER, _exactSent);
 
         address[] memory path = new address[](2);
         path[0] = _offered;

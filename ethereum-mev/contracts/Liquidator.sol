@@ -117,15 +117,21 @@ contract Liquidator is PairSelector, LiquidationCallee {
      * @param _toMiner (uint): the portion of revenue to send to block.coinbase
      */
     function liquidateS(address _borrower, address _repayCToken, address _seizeCToken, uint _toMiner) public {
-        uint seizeTokensPerRepayToken = oracle.getUnderlyingPrice(_repayCToken) * liqIncent / oracle.getUnderlyingPrice(_seizeCToken); // 18 extra decimals
+        // [num seize tokens per repay token] = num / den / 1e18
+        uint num = oracle.getUnderlyingPrice(_repayCToken) * liqIncent;
+        uint den = oracle.getUnderlyingPrice(_seizeCToken);
 
-        uint repay_BorrowConstrained = CERC20(_repayCToken).borrowBalanceStored(_borrower) * closeFact / 1e18; // 0 extra decimals
-        uint repay_SupplyConstrained = CERC20(_seizeCToken).balanceOf(_borrower) * CERC20(_seizeCToken).exchangeRateStored() / seizeTokensPerRepayToken; // 0 extra decimals
+        // max possible repay, constrained by borrow
+        uint a = CERC20(_repayCToken).borrowBalanceStored(_borrower) * closeFact / 1e18; // 0 extra decimals
+        // max possible repay, constrained by supply
+        uint b = CERC20(_seizeCToken).balanceOf(_borrower) * CERC20(_seizeCToken).exchangeRateStored() * den / num;// seizeTokensPerRepayToken; // 0 extra decimals
         
-        uint repay = repay_BorrowConstrained < repay_SupplyConstrained ? repay_BorrowConstrained : repay_SupplyConstrained;
-        uint seize = repay * seizeTokensPerRepayToken / 1e18;
+        // max possible repay, overall
+        a = a < b ? a : b;
+        // corresponding seize amount
+        b = a * num / den / 1e18;
 
-        uint mode = liquidate(_borrower, _repayCToken, _seizeCToken, repay, seize);
+        uint mode = liquidate(_borrower, _repayCToken, _seizeCToken, a, b);
 
         if (_toMiner != 0) {
             if (mode == 0 || mode == 1) {
