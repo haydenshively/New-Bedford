@@ -36,12 +36,15 @@ module.exports = {
       ],
     },
     mainnet: {
-      url: `https://mainnet.infura.io/v3/${process.env.PROVIDER_INFURA_ID}`,
+      url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.PROVIDER_ALCHEMY_KEY}`,//`https://mainnet.infura.io/v3/${process.env.PROVIDER_INFURA_ID}`,
       accounts: [
-        process.env.ACCOUNT_SECRET_DEPLOY,
         process.env.ACCOUNT_SECRET_VANITY,
+        process.env.ACCOUNT_SECRET_DEPLOY,
         process.env.ACCOUNT_SECRET_OWNER,
       ],
+      gasPrice: 82000000000,
+      gasMultiplier: 1.05,
+      timeout: 720000,
     },
   },
   solidity: {
