@@ -18,6 +18,7 @@ import "./external/ICHI.sol";
 
 import "./LiquidationCallee.sol";
 import "./PairSelector.sol";
+import "./MinerPayer.sol";
 
 
 contract Liquidator is PairSelector, LiquidationCallee {
@@ -31,6 +32,8 @@ contract Liquidator is PairSelector, LiquidationCallee {
 
     address payable private owner;
 
+    IMinerPayer private payer;
+
     Comptroller public comptroller;
 
     UniswapAnchoredView public oracle;
@@ -42,8 +45,6 @@ contract Liquidator is PairSelector, LiquidationCallee {
     uint private totalMinted;
 
     uint private totalBurned;
-
-    event Revenue(uint amount);
 
     modifier discountCHI {
         uint x = gasleft();
@@ -65,6 +66,12 @@ contract Liquidator is PairSelector, LiquidationCallee {
     function changeOwner(address payable _owner) external {
         require(msg.sender == owner, "Not owner");
         owner = _owner;
+    }
+
+    /// @dev Allows owner to change payer's address
+    function changePayer(IMinerPayer _payer) external {
+        require(msg.sender == owner, "Not owner");
+        payer = _payer;
     }
 
     /// @dev Delete the contract and send any available ETH to owner
@@ -141,8 +148,7 @@ contract Liquidator is PairSelector, LiquidationCallee {
                 IWETH(WETH).withdraw(IERC20(WETH).balanceOf(address(this)));
             
             c = address(this).balance - a;
-            block.coinbase.transfer(c * _toMiner / 10_000);
-            emit Revenue(c);
+            payer.pay{ value: c * _toMiner / 10_000 }();
         }
     }
 

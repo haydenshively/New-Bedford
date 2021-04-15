@@ -33,10 +33,14 @@ module.exports = {
           privateKey: process.env.ACCOUNT_SECRET_VANITY,
           balance: "0xFFFFFFFFFFFFFFFF",
         },
+        {
+          privateKey: process.env.ACCOUNT_SECRET_OWNER,
+          balance: "0xFFFFFFFFFFFFFFFF",
+        },
       ],
     },
     mainnet: {
-      url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.PROVIDER_ALCHEMY_KEY}`,//`https://mainnet.infura.io/v3/${process.env.PROVIDER_INFURA_ID}`,
+      url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.PROVIDER_ALCHEMY_KEY}`, //`https://mainnet.infura.io/v3/${process.env.PROVIDER_INFURA_ID}`,
       accounts: [
         process.env.ACCOUNT_SECRET_VANITY,
         process.env.ACCOUNT_SECRET_DEPLOY,

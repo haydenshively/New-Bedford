@@ -1,37 +1,46 @@
 const { assert, expect } = require("chai");
+const { artifacts } = require("hardhat");
 
 const Liquidator = artifacts.require("Liquidator");
+const MinerPayer = artifacts.require("MinerPayer");
 
-async function checkRevenue(liquidator, balanceBefore, event, asset, toMiner) {
-  assert.equal(event.address, liquidator.address);
+async function checkRevenue(
+  liquidator,
+  balanceBefore,
+  event,
+  minerPayer,
+  toMiner
+) {
+  assert.equal(event.address, minerPayer.address);
 
-  const abi = liquidator.contract._jsonInterface.filter(
+  const abi = minerPayer.contract._jsonInterface.filter(
     (abi) => abi.name === "Revenue"
   )[0];
   const decoded = web3.eth.abi.decodeLog(abi.inputs, event.data, event.topics);
 
   assert.notEqual(decoded.amount, "0");
 
-  const liquidatorBalanceDelta =
+  const amountKept =
     Number(await web3.eth.getBalance(liquidator.address)) - balanceBefore;
-  const liquidatorBalanceRatio =
-    Number(decoded.amount) / Number(liquidatorBalanceDelta);
-  const expectedBalanceRatio = 10000 / (10000 - toMiner);
+  const amountSent = Number(decoded.amount);
 
-  console.log(`Balance ratio: ${liquidatorBalanceRatio}`);
-  assert.equal(
-    Math.round((10 * liquidatorBalanceRatio) / expectedBalanceRatio),
-    10
-  );
+  console.log(`Actual toMiner: ${10000 * amountSent / (amountKept + amountSent)}`);
+  assert.equal(Math.round(10000 * amountSent / (amountKept + amountSent)), toMiner);
 }
 
 describe("Liquidator Contract Test", function () {
   let accounts;
   let liquidator;
+  let minerPayer;
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
     liquidator = await Liquidator.new();
+    minerPayer = await MinerPayer.new();
+
+    await liquidator.changePayer(minerPayer.address, {
+      from: "0xF1c73bb23934127A2C1Fa4bA7520822574fE9bA7",
+    });
   });
 
   it("should liquidate USDT and seize WBTC @latest-block", async () => {
@@ -53,7 +62,7 @@ describe("Liquidator Contract Test", function () {
       liquidator,
       balance,
       events[events.length - 1],
-      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH
+      minerPayer,
       6000
     );
   });
@@ -77,7 +86,7 @@ describe("Liquidator Contract Test", function () {
       liquidator,
       balance,
       events[events.length - 1],
-      "0x0000000000000000000000000000000000000000", // ETH
+      minerPayer,
       6000
     );
   });
@@ -101,7 +110,7 @@ describe("Liquidator Contract Test", function () {
       liquidator,
       balance,
       events[events.length - 1],
-      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH
+      minerPayer,
       5000
     );
   });
@@ -125,7 +134,7 @@ describe("Liquidator Contract Test", function () {
       liquidator,
       balance,
       events[events.length - 1],
-      "0x0000000000000000000000000000000000000000", // ETH
+      minerPayer,
       4000
     );
   });
@@ -149,7 +158,7 @@ describe("Liquidator Contract Test", function () {
       liquidator,
       balance,
       events[events.length - 1],
-      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH
+      minerPayer,
       500
     );
   });
@@ -196,7 +205,7 @@ describe("Liquidator Contract Test", function () {
       liquidator,
       balance,
       events[events.length - 2],
-      "0x0000000000000000000000000000000000000000", // ETH
+      minerPayer,
       7000
     );
   });
@@ -230,11 +239,6 @@ describe("Liquidator Contract Test", function () {
 
     console.log(`Gas used: ${tx.receipt.gasUsed}`);
 
-    await checkRevenue(
-      liquidator,
-      events[events.length - 1],
-      "0x0000000000000000000000000000000000000000", // ETH
-      5000
-    );
+    await checkRevenue(liquidator, events[events.length - 1], minerPayer, 5000);
   });
 });
