@@ -39,14 +39,14 @@ export class Liquidator extends Contract {
     chi = true,
   ) {
     const handle = chi ? this.inner.methods.liquidateSWithPriceChi : this.inner.methods.liquidateSWithPrice;
-    const method = handle(messages, signatures, symbols, borrower, repayCToken, seizeCToken, toMiner);
+    const method = handle(messages, signatures, symbols, borrower, repayCToken, seizeCToken, toMiner.toFixed(0));
 
     return this.txFor(method, Liquidator.gasLimit);
   }
 
   private liquidateS(borrower: string, repayCToken: string, seizeCToken: string, toMiner: number, chi = true) {
     const handle = chi ? this.inner.methods.liquidateSChi : this.inner.methods.liquidateS;
-    const method = handle(borrower, repayCToken, seizeCToken, toMiner);
+    const method = handle(borrower, repayCToken, seizeCToken, toMiner.toFixed(0));
 
     return this.txFor(method, Liquidator.gasLimit);
   }
@@ -56,13 +56,15 @@ export enum Instances {
   // v1,
   // v2,
   // ...
+  v1,
   latest,
 }
 
 type InstanceMap<T> = { [d in keyof typeof Instances]: T };
 
 const liquidators: InstanceMap<Liquidator> = {
-  latest: new Liquidator('0x0000000073aB64137E95dea458bAc6d7AA503636'),
+  v1: new Liquidator('0x0000000073aB64137E95dea458bAc6d7AA503636'),
+  latest: new Liquidator('0x00000000000067afd7fa546d3f63d4e53cdb8fa4'),
 };
 
 export default liquidators;

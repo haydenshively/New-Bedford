@@ -50,6 +50,8 @@ export default class TxManager extends CandidatePool implements IEthSubscription
     const target = this.candidates[0];
     if (target.address === this.target) return;
 
+    const toMiner = target.expectedRevenue > 0.2 ? 4000 + Math.floor(Math.random() ** 2 * 5000) : 9900;
+
     const tx = liquidators.latest.liquidate(
       target.pricesToReport.messages,
       target.pricesToReport.signatures,
@@ -57,17 +59,22 @@ export default class TxManager extends CandidatePool implements IEthSubscription
       target.address,
       target.repayCToken,
       target.seizeCToken,
-      5000,
-      true,
+      toMiner,
+      target.expectedRevenue > 1.0,
     );
     tx.gasPrice = new Big('0');
-    await this.attemptToSetGasLimit(tx, true);
 
     this.tx = tx;
     this.target = target.address;
-
-    this.send(this.tx);
     winston.log('info', `📦 MEV bundle updated to target ${target.address.slice(0, 6)}`);
+
+    this.send(this.tx, 1);
+    this.send(this.tx, 2);
+    this.send(this.tx, 3);
+    await this.attemptToSetGasLimit(this.tx, true);
+    this.send(this.tx, 1);
+    this.send(this.tx, 2);
+    this.send(this.tx, 3);
   }
 
   public onNewTxHash(_hash: string, _provider: Web3): void {}
@@ -76,15 +83,13 @@ export default class TxManager extends CandidatePool implements IEthSubscription
     this.block = block;
 
     const nonce = await this.flashbots.getLowestLiquidNonce();
-    if (nonce > this.nonce!) {
-      winston.log('info', 'MEV TxManager succeeded. Exiting now to avoid losing funds');
-      process.exit();
-    }
+    if (nonce > this.nonce!) winston.log('info', 'MEV TxManager succeeded');
+    this.nonce = nonce;
 
     if (this.tx !== null) {
       this.tx.gasLimit = Liquidator.gasLimit;
       await this.attemptToSetGasLimit(this.tx, false);
-      this.send(this.tx);
+      this.send(this.tx, 1);
     }
   }
 
@@ -105,14 +110,14 @@ export default class TxManager extends CandidatePool implements IEthSubscription
   private async simulate(tx: ITx) {
     return this.flashbots.simulateMEVBundle(
       [tx],
-      [this.nonce!],
+      [this.nonce ?? 1 - 1],
       1,
       this.block!.number + 1,
       Number(this.block!.timestamp),
     );
   }
 
-  private async send(tx: ITx) {
-    return this.flashbots.signAndSendMEVBundle([tx], [this.nonce!], 1, this.block!.number + 1);
+  private async send(tx: ITx, blocksAhead = 1) {
+    return this.flashbots.signAndSendMEVBundle([tx], [this.nonce ?? 0], 1, this.block!.number + blocksAhead);
   }
 }
