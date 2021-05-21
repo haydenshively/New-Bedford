@@ -107,6 +107,10 @@ export default class StatefulBorrowers {
       const respondToBorrow = (ev: EventData) => {
         const borrower: string = ev.returnValues.borrower;
         if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
+        else {
+          console.log(`Added borrower ${borrower.slice(0, 6)} on-the-fly.`);
+          this.push([borrower]);
+        }
       };
       const respondToRepay = (ev: EventData) => {
         const borrower: string = ev.returnValues.borrower;
