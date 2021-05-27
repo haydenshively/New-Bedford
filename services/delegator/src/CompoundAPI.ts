@@ -58,11 +58,16 @@ const getBorrowers = async (minBorrow_Eth: string) => {
 
   let result;
   do {
-    result = await fetch({
-      min_borrow_value_in_eth: { value: minBorrow_Eth },
-      page_size: 100,
-      page_number: i,
-    });
+    try {
+      result = await fetch({
+        min_borrow_value_in_eth: { value: minBorrow_Eth },
+        page_size: 100,
+        page_number: i,
+      });
+    } catch (e) {
+      console.log(e);
+      continue;
+    }
     if (result.error) {
       console.warn(result.error.toString());
       continue;
