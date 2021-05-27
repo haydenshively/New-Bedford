@@ -1,6 +1,6 @@
 import { CTokenSymbol } from './CTokens';
 
-export type CoinbaseKey = 'BAT' | 'COMP' | 'DAI' | 'ETH' | 'REP' | 'UNI' | 'BTC' | 'ZRX';
+export type CoinbaseKey = 'BAT' | 'COMP' | 'DAI' | 'ETH' | 'REP' | 'UNI' | 'BTC' | 'ZRX' | 'LINK';
 
 export const coinbaseKeyMap: { [i in CoinbaseKey]: CTokenSymbol } = {
   BAT: 'cBAT',
@@ -11,4 +11,5 @@ export const coinbaseKeyMap: { [i in CoinbaseKey]: CTokenSymbol } = {
   UNI: 'cUNI',
   BTC: 'cWBTC',
   ZRX: 'cZRX',
+  LINK: 'cLINK',
 };

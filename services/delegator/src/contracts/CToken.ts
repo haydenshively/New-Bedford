@@ -92,6 +92,8 @@ const cTokens: InstanceMap<CToken> = {
   cUNI: new CToken('cUNI'),
   cUSDC: new CToken('cUSDC'),
   cUSDT: new CToken('cUSDT'),
+  cLINK: new CToken('cLINK'),
+  cTUSD: new CToken('cTUSD'),
   cWBTC: new CToken('cWBTC'),
   cWBTC2: new CToken('cWBTC2'),
   cZRX: new CToken('cZRX'),

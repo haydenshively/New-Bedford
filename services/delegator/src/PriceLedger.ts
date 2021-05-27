@@ -27,6 +27,7 @@ export default class PriceLedger {
     UNI: null,
     BTC: null,
     ZRX: null,
+    LINK: null,
   };
   private readonly priceHistories: { readonly [_ in CoinbaseKey]: IPrice[] } = {
     BAT: [],
@@ -37,6 +38,7 @@ export default class PriceLedger {
     UNI: [],
     BTC: [],
     ZRX: [],
+    LINK: [],
   };
   private readonly postableData: { readonly [_ in CoinbaseKey]: TimestampMap } = {
     BAT: {},
@@ -47,6 +49,7 @@ export default class PriceLedger {
     UNI: {},
     BTC: {},
     ZRX: {},
+    LINK: {},
   };
 
   public get summaryText(): string {
@@ -147,9 +150,15 @@ export default class PriceLedger {
         };
       case 'cUSDC':
       case 'cUSDT':
+      case 'cTUSD':
         return {
           min: USD_VALUE,
           max: USD_VALUE,
+        };
+      case 'cLINK':
+        return {
+          min: this.prices.LINK?.min.value || null,
+          max: this.prices.LINK?.max.value || null,
         };
       case 'cWBTC':
       case 'cWBTC2':
