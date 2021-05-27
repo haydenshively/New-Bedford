@@ -237,7 +237,7 @@
     "@ethersproject/properties" "^5.0.3"
     "@ethersproject/strings" "^5.0.4"
 
-"@goldenagellc/web3-blocks@^0.1.1":
+"@goldenagellc/web3-blocks@0.1.1":
   version "0.1.1"
   resolved "https://npm.pkg.github.com/download/@goldenagellc/web3-blocks/0.1.1/57ae37ccb26a3a168d9c495e9cfff4cb7168bd18bde0466f813527828ec2ba18#506437d33b0644d50629c42c320f408e56cff14b"
   integrity sha512-Ap3yGwbt71HwyaKvYlXGnakEAu1AtA8ZDVD0SqN8NOgHJ1aEnM4WJ0qDeiNpdxQDN4eNAoUU5W372mBXHyebaQ==

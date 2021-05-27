@@ -28,6 +28,8 @@ export default class StatefulComptroller {
     cUNI: null,
     cUSDC: null,
     cUSDT: null,
+    cLINK: null,
+    cTUSD: null,
     cWBTC: null,
     cWBTC2: null,
     cZRX: null,

@@ -6,7 +6,7 @@ interface ICompoundAPIRequest {
   addresses?: string[];
   block_number?: number;
   max_health?: CompoundAPIRequestValue;
-  min_borrow_value_in_eth: CompoundAPIRequestValue;
+  min_borrow_value_in_eth?: CompoundAPIRequestValue;
   page_number?: number;
   page_size?: number;
   network?: string;
@@ -38,6 +38,7 @@ const fetch = async (r: ICompoundAPIRequest) => {
     })
     .join('&');
 
+  console.log(path + params);
   const res = await nfetch(path + params, {
     method: method,
     headers: headers,
@@ -57,15 +58,21 @@ const getBorrowers = async (minBorrow_Eth: string) => {
 
   let result;
   do {
-    result = await fetch({
-      min_borrow_value_in_eth: { value: minBorrow_Eth },
-      page_size: 100,
-      page_number: i,
-    });
+    try {
+      result = await fetch({
+        min_borrow_value_in_eth: { value: minBorrow_Eth },
+        page_size: 100,
+        page_number: i,
+      });
+    } catch (e) {
+      console.log(e);
+      continue;
+    }
     if (result.error) {
       console.warn(result.error.toString());
       continue;
     }
+    if (result.accounts === undefined) continue;
     borrowers = borrowers.concat(result.accounts.map((account: any) => account.address));
     pageCount = result.pagination_summary.total_pages;
     i++;

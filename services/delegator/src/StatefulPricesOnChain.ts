@@ -31,6 +31,7 @@ export default class StatefulPricesOnChain {
     UNI: [],
     BTC: [],
     ZRX: [],
+    LINK: [],
   };
 
   constructor(

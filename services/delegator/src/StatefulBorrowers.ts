@@ -25,6 +25,8 @@ export default class StatefulBorrowers {
     cUNI: new Big('0'),
     cUSDC: new Big('0'),
     cUSDT: new Big('0'),
+    cLINK: new Big('0'),
+    cTUSD: new Big('0'),
     cWBTC: new Big('0'),
     cWBTC2: new Big('0'),
     cZRX: new Big('0'),
@@ -107,6 +109,10 @@ export default class StatefulBorrowers {
       const respondToBorrow = (ev: EventData) => {
         const borrower: string = ev.returnValues.borrower;
         if (borrower in this.borrowers) this.borrowers[borrower].onBorrow(ev);
+        else {
+          console.log(`Added borrower ${borrower.slice(0, 6)} on-the-fly.`);
+          this.push([borrower]);
+        }
       };
       const respondToRepay = (ev: EventData) => {
         const borrower: string = ev.returnValues.borrower;

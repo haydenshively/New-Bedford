@@ -1,7 +1,7 @@
 {
-  "name": "new-bedford-txmanager",
+  "name": "new-bedford-txmanager-mev",
   "version": "1.0.0",
-  "description": "Compound Liquidation Bot - TxManager",
+  "description": "Compound Liquidation Bot - TxManager for MEV/Flashbots",
   "main": "build/start.js",
   "directories": {
     "test": "test"
@@ -12,7 +12,7 @@
   "dependencies": {
     "@ethereumjs/common": "^2.0.0",
     "@ethereumjs/tx": "^3.0.0",
-    "@goldenagellc/web3-blocks": "0.1.1",
+    "@goldenagellc/web3-blocks": "^0.1.5",
     "@grpc/grpc-js": "^1.2.2",
     "big.js": "^5.2.2",
     "dotenv-safe": "^8.2.0",

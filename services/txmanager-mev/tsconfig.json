@@ -1,0 +1,20 @@
+{
+  "extends": "@tsconfig/node14",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "build",
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "target": "ES2020"
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
