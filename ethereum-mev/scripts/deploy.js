@@ -45,7 +45,10 @@ async function deployMinerPayer() {
 
 async function mintCHI(amount) {
   const liquidator = await Liquidator.at(ADDR);
-  const tx = await liquidator.mintCHI(amount);
+  const tx = await liquidator.mintCHI(amount, {
+    from: "0xF1c73bb23934127A2C1Fa4bA7520822574fE9bA7",
+    nonce: 62
+  });
 
   if (!tx.receipt.status) {
     console.error("failed to mint pseudo-chi");
@@ -53,6 +56,23 @@ async function mintCHI(amount) {
   }
 }
 
+async function payout() {
+  const liquidator = await Liquidator.at(ADDR);
+  const tx = await liquidator.payoutMax(
+    "0x0000000000000000000000000000000000000000",
+    {
+      from: "0xF1c73bb23934127A2C1Fa4bA7520822574fE9bA7",
+      nonce: 63
+    }
+  );
+
+  if (!tx.receipt.status) {
+    console.error("failed to payout");
+    return;
+  }
+}
+
 // deploy();
 // deployMinerPayer();
-// mintCHI(50);
+mintCHI(50);
+payout()

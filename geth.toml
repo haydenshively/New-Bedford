@@ -41,10 +41,10 @@ Locals = ["0xd3fe28f892ec951d9332d0c13e9ab0dcebd7cbf7", "0xd4e865a91ff282a767893
 NoLocals = false
 Journal = "transactions.rlp"
 Rejournal = 3600000000000
-PriceLimit = 1
+PriceLimit = 30000000000
 PriceBump = 10
 AccountSlots = 16
-GlobalSlots = 4096
+GlobalSlots = 16384
 AccountQueue = 64
 GlobalQueue = 1024
 Lifetime = 10800000000000
@@ -59,10 +59,10 @@ IPCPath = "/srv/ethereum/geth.ipc"
 HTTPHost = ""
 HTTPPort = 8545
 HTTPVirtualHosts = ["localhost"]
-HTTPModules = ["net", "web3", "eth"]
+HTTPModules = ["net", "web3", "eth", "txpool"]
 WSHost = ""
 WSPort = 8546
-WSModules = ["net", "web3", "eth"]
+WSModules = ["net", "web3", "eth", "txpool"]
 
 [Node.P2P]
 MaxPeers = 80

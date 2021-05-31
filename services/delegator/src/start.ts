@@ -113,29 +113,30 @@ function stop() {
 ipc.config.appspace = 'newbedford.';
 ipc.config.id = 'delegator';
 ipc.config.silent = true;
-ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
-  ipc.of['txmanager'].on('connect', () => {
-    console.log("Connected to TxManager's IPC");
+// ipc.connectTo('txmanager', '/tmp/newbedford.txmanager', () => {
+//   ipc.of['txmanager'].on('connect', () => {
+//     console.log("Connected to TxManager's IPC");
 
-    ipc.connectTo('txmanager-mev', '/tmp/newbedford.txmanager-mev', () => {
-      ipc.of['txmanager-mev'].on('connect', () => {
-        console.log("Connected to TxManagerMEV's IPC");
+ipc.connectTo('txmanager-mev', '/tmp/newbedford.txmanager-mev', () => {
+  ipc.of['txmanager-mev'].on('connect', () => {
+    console.log("Connected to TxManagerMEV's IPC");
 
-        start([ipc.of['txmanager'], ipc.of['txmanager-mev']]);
-      });
-    });
-  });
-
-  ipc.of['txmanager'].on('disconnect', () => {
-    console.log("Disconnected from TxManager's IPC");
-    stop();
-    process.exit();
+    start([/*ipc.of['txmanager'], */ipc.of['txmanager-mev']]);
   });
 });
+//   });
+
+//   ipc.of['txmanager'].on('disconnect', () => {
+//     console.log("Disconnected from TxManager's IPC");
+//     stop();
+//     process.exit();
+//   });
+// });
 
 process.on('SIGINT', () => {
   console.log('\nCaught interrupt signal');
-  ipc.disconnect('txmanager');
+  // ipc.disconnect('txmanager');
+  ipc.disconnect('txmanager-mev')
   stop();
   console.log('Exited cleanly');
   process.exit();

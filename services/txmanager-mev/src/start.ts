@@ -2,7 +2,7 @@ import ipc from 'node-ipc';
 import Web3 from 'web3';
 import winston from 'winston';
 
-import { ProviderGroup, Wallet } from '@goldenagellc/web3-blocks';
+import { ProviderGroup, FlashbotsWallet } from '@goldenagellc/web3-blocks';
 
 import EthSubscriber from './EthSubscriber';
 import ILiquidationCandidate from './types/ILiquidationCandidate';
@@ -42,7 +42,7 @@ const ethSub = new EthSubscriber((provider as unknown) as Web3);
 ethSub.init();
 
 // create queue
-const wallet = new Wallet(provider, process.env.ACCOUNT_ADDRESS_CALLER!, process.env.ACCOUNT_SECRET_CALLER!);
+const wallet = new FlashbotsWallet(provider, process.env.ACCOUNT_ADDRESS_CALLER!, process.env.ACCOUNT_SECRET_CALLER!);
 
 // create tx manager
 const txmanager = new TxManager(wallet);

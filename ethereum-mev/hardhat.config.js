@@ -46,7 +46,7 @@ module.exports = {
         process.env.ACCOUNT_SECRET_DEPLOY,
         process.env.ACCOUNT_SECRET_OWNER,
       ],
-      gasPrice: 90000000000,
+      gasPrice: 40000000000,
       gasMultiplier: 1.15,
       timeout: 720000,
     },

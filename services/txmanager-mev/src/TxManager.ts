@@ -1,4 +1,4 @@
-import { Big, ITx, Wallet } from '@goldenagellc/web3-blocks';
+import { Big, ITx, FlashbotsWallet } from '@goldenagellc/web3-blocks';
 import { BlockHeader } from 'web3-eth';
 import Web3 from 'web3';
 import winston from 'winston';
@@ -10,7 +10,7 @@ import CandidatePool from './CandidatePool';
 import liquidators, { Liquidator } from './contracts/Liquidator';
 
 export default class TxManager extends CandidatePool implements IEthSubscriptionConsumer {
-  private readonly flashbots: Wallet;
+  private readonly flashbots: FlashbotsWallet;
 
   private tx: ITx | null = null;
 
@@ -20,7 +20,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
 
   private block: BlockHeader | null = null;
 
-  constructor(flashbots: Wallet) {
+  constructor(flashbots: FlashbotsWallet) {
     super();
 
     this.flashbots = flashbots;
@@ -108,16 +108,10 @@ export default class TxManager extends CandidatePool implements IEthSubscription
   }
 
   private async simulate(tx: ITx) {
-    return this.flashbots.simulateMEVBundle(
-      [tx],
-      [this.nonce ?? 1 - 1],
-      1,
-      this.block!.number + 1,
-      Number(this.block!.timestamp),
-    );
+    return this.flashbots.signAndSimulateFBBundle([tx], [this.nonce ?? 0], 1, this.block!.number + 1);
   }
 
   private async send(tx: ITx, blocksAhead = 1) {
-    return this.flashbots.signAndSendMEVBundle([tx], [this.nonce ?? 0], 1, this.block!.number + blocksAhead);
+    return this.flashbots.signAndSendFBBundle([tx], [this.nonce ?? 0], 1, this.block!.number + blocksAhead, null);
   }
 }

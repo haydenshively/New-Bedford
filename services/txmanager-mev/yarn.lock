@@ -950,10 +950,10 @@
     "@ethersproject/properties" "^5.0.7"
     "@ethersproject/strings" "^5.0.8"
 
-"@goldenagellc/web3-blocks@^0.1.5":
-  version "0.1.5"
-  resolved "https://npm.pkg.github.com/download/@goldenagellc/web3-blocks/0.1.5/8b1f5804c814dbe94745f53b3c3c2da9dd57184e9807d16fb306331d6661bdf8#37ba229b73ed00be7f1e341c1bb03237febaacab"
-  integrity sha512-aUr9OvkV866uJ5/DYSBInGDbDc0t5cskx6uOUzT8bWeWzyCs+ArKimiCXcvJ45bnu+ftaWsKIU0eiPAD+7cyMg==
+"@goldenagellc/web3-blocks@0.1.9":
+  version "0.1.9"
+  resolved "https://npm.pkg.github.com/download/@goldenagellc/web3-blocks/0.1.9/a416ab5ac6281e318e9162a7e263ee84ad3218308fc99cec7cb773f5c53c4297#2acd0d286d074e77ad632121603fce96ccc6d5f1"
+  integrity sha512-auKG38i+dqGVC/vDgwKQsjEFUleg3FWhCYAN8YBMum9Hpuc8IDBLlRZ1hndN4aUEXYvKOOqX9SckJdQ0ZPgK0A==
   dependencies:
     "@ethereumjs/common" "^2.0.0"
     "@ethereumjs/tx" "^3.0.0"
