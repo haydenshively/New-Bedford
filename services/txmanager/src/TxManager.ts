@@ -19,7 +19,7 @@ const competitorsFrom = new Set(competitors.from as string[]);
 const competitorsTo = new Set(competitors.to as string[]);
 
 const INITIAL_GAS_PRICE: Big = new Big('100000000000');
-const DEADLINE_CUSHION = 5000;
+const DEADLINE_CUSHION = 9000;
 
 export default class TxManager extends CandidatePool implements IEthSubscriptionConsumer {
   private readonly incognito: IncognitoQueue;
@@ -86,6 +86,7 @@ export default class TxManager extends CandidatePool implements IEthSubscription
 
   private periodic(): void {
     if (!this.isActive) {
+      this.tx = null;
       if (this.queue.length > 0) this.queue.dump(0);
       return; // Break out of periodic loop (no immediate reschedule)
     }

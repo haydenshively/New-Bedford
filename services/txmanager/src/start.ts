@@ -11,6 +11,7 @@ import LatencyInterpreter from './LatencyInterpreter';
 import LatencyWatcher from './LatencyWatcher';
 import TxManager from './TxManager';
 import SlackHook from './logging/SlackHook';
+import { CTokens } from './types/CTokens';
 
 require('dotenv-safe').config();
 
@@ -70,7 +71,11 @@ ipc.config.silent = true;
 ipc.serve('/tmp/newbedford.txmanager', () => {
   ipc.server.on('liquidation-candidate-add', async (message) => {
     const candidate = message as ILiquidationCandidate;
-    if (candidate.expectedRevenue < 0.04) {
+    if (candidate.repayCToken === CTokens.cUSDT) {
+      console.log(`Ignoring candidate ${candidate.address.slice(0, 6)} due to USDT repayment bug`);
+      return;
+    }
+    if (candidate.expectedRevenue < 0.2) {
       console.log(
         `Ignoring candidate ${candidate.address.slice(0, 6)} due to low expected revenue (${
           candidate.expectedRevenue
@@ -89,8 +94,13 @@ ipc.serve('/tmp/newbedford.txmanager', () => {
   ipc.server.on('liquidation-candidate-remove', (message) => {
     txmanager.removeLiquidationCandidate(message);
   });
-  ipc.server.on('keepalive', (_message) => {
+  ipc.server.on('keepalive', async (_message) => {
     console.log('Staying alive oh oh oh 🎶');
+    try {
+      await provider.eth.getBlockNumber();
+    } catch {
+      winston.log('info', '☠️ Basic provider functionality died in TxManager');
+    }
   });
 });
 ipc.server.start();
