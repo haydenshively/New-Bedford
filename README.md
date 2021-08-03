@@ -24,8 +24,8 @@ extraneous `transfer`s and `emit`s
 - 📦 Adjust % paid to miner at bundle creation time
 - 🥸 Incognito mode for PGAs - rotate to & from addresses after each successful transaction
 
-> NOTE: These features are spread across the [ethereum](./ethereum) and [ethereum-mev](./ethereum-mev)
-> directories. `ethereum-mev` is generally better (although it should really be called `ethereum-flashbots`)
+> NOTE: These features are spread across the [ethereum-pga](./ethereum-pga) and [ethereum-flashbots](./ethereum-flashbots)
+> directories. `ethereum-flashbots` is generally better.
 
 ### TypeScript
 
