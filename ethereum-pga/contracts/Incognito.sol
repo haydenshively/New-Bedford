@@ -31,7 +31,7 @@ contract Incognito {
      */
     function _delegate(address _target) internal {
         // solhint-disable-next-line no-inline-assembly
-        assembly {
+        assembly {df
             // Copy msg.data. We take full control of memory in this inline assembly
             // block because it will not return to Solidity code. We overwrite the
             // Solidity scratch pad at memory position 0.
